@@ -1,0 +1,26 @@
+{
+  "tickers": [
+    "AAPL",
+    "TSLA",
+    "MSFT",
+    "NVDA",
+    "AMZN",
+    "META",
+    "GOOGL",
+    "SPY",
+    "COIN",
+    "AMD"
+  ],
+  "files": [
+    "/Users/air/stock-analysis/src/data/pipeline/01_fetcher/AAPL.json",
+    "/Users/air/stock-analysis/src/data/pipeline/01_fetcher/TSLA.json",
+    "/Users/air/stock-analysis/src/data/pipeline/01_fetcher/MSFT.json",
+    "/Users/air/stock-analysis/src/data/pipeline/01_fetcher/NVDA.json",
+    "/Users/air/stock-analysis/src/data/pipeline/01_fetcher/AMZN.json",
+    "/Users/air/stock-analysis/src/data/pipeline/01_fetcher/META.json",
+    "/Users/air/stock-analysis/src/data/pipeline/01_fetcher/GOOGL.json",
+    "/Users/air/stock-analysis/src/data/pipeline/01_fetcher/SPY.json",
+    "/Users/air/stock-analysis/src/data/pipeline/01_fetcher/COIN.json",
+    "/Users/air/stock-analysis/src/data/pipeline/01_fetcher/AMD.json"
+  ]
+}

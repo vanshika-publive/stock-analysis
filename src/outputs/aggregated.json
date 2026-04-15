@@ -1,0 +1,112 @@
+[
+  {
+    "ticker": "AAPL",
+    "ath_price": 288.62,
+    "ath_date": "2025-12-03",
+    "atl_price": 22.37,
+    "atl_date": "2016-05-12",
+    "days_between": 3492,
+    "speed_label": "Steady Climber",
+    "risk_label": "Conservative",
+    "analysis": "AAPL: move from ATL to ATH is ~12.9x over 3492 days (Steady Climber). ATH 2025-12-03 vs ATL 2016-05-12. Figures from Yahoo daily bars (split-adjusted); not investment advice."
+  },
+  {
+    "ticker": "TSLA",
+    "ath_price": 498.83,
+    "ath_date": "2025-12-22",
+    "atl_price": 11.8,
+    "atl_date": "2019-06-03",
+    "days_between": 2394,
+    "speed_label": "Rocket",
+    "risk_label": "Speculative",
+    "analysis": "TSLA: move from ATL to ATH is ~42.3x over 2394 days (Rocket). ATH 2025-12-22 vs ATL 2019-06-03. Figures from Yahoo daily bars (split-adjusted); not investment advice."
+  },
+  {
+    "ticker": "MSFT",
+    "ath_price": 555.45,
+    "ath_date": "2025-07-31",
+    "atl_price": 48.04,
+    "atl_date": "2016-06-27",
+    "days_between": 3321,
+    "speed_label": "Steady Climber",
+    "risk_label": "Conservative",
+    "analysis": "MSFT: move from ATL to ATH is ~11.6x over 3321 days (Steady Climber). ATH 2025-07-31 vs ATL 2016-06-27. Figures from Yahoo daily bars (split-adjusted); not investment advice."
+  },
+  {
+    "ticker": "NVDA",
+    "ath_price": 212.19,
+    "ath_date": "2025-10-29",
+    "atl_price": 0.86,
+    "atl_date": "2016-05-04",
+    "days_between": 3465,
+    "speed_label": "Rocket",
+    "risk_label": "Speculative",
+    "analysis": "NVDA: move from ATL to ATH is ~246.7x over 3465 days (Rocket). ATH 2025-10-29 vs ATL 2016-05-04. Figures from Yahoo daily bars (split-adjusted); not investment advice."
+  },
+  {
+    "ticker": "AMZN",
+    "ath_price": 258.6,
+    "ath_date": "2025-11-03",
+    "atl_price": 29.96,
+    "atl_date": "2016-04-28",
+    "days_between": 3476,
+    "speed_label": "Steady Climber",
+    "risk_label": "Conservative",
+    "analysis": "AMZN: move from ATL to ATH is ~8.6x over 3476 days (Steady Climber). ATH 2025-11-03 vs ATL 2016-04-28. Figures from Yahoo daily bars (split-adjusted); not investment advice."
+  },
+  {
+    "ticker": "META",
+    "ath_price": 796.25,
+    "ath_date": "2025-08-15",
+    "atl_price": 88.09,
+    "atl_date": "2022-11-04",
+    "days_between": 1015,
+    "speed_label": "Rocket",
+    "risk_label": "Aggressive",
+    "analysis": "META: move from ATL to ATH is ~9.0x over 1015 days (Rocket). ATH 2025-08-15 vs ATL 2022-11-04. Figures from Yahoo daily bars (split-adjusted); not investment advice."
+  },
+  {
+    "ticker": "GOOGL",
+    "ath_price": 349.0,
+    "ath_date": "2026-02-03",
+    "atl_price": 33.63,
+    "atl_date": "2016-06-27",
+    "days_between": 3508,
+    "speed_label": "Steady Climber",
+    "risk_label": "Conservative",
+    "analysis": "GOOGL: move from ATL to ATH is ~10.4x over 3508 days (Steady Climber). ATH 2026-02-03 vs ATL 2016-06-27. Figures from Yahoo daily bars (split-adjusted); not investment advice."
+  },
+  {
+    "ticker": "SPY",
+    "ath_price": 697.84,
+    "ath_date": "2026-01-28",
+    "atl_price": 198.65,
+    "atl_date": "2016-06-27",
+    "days_between": 3502,
+    "speed_label": "Steady Climber",
+    "risk_label": "Conservative",
+    "analysis": "SPY: move from ATL to ATH is ~3.5x over 3502 days (Steady Climber). ATH 2026-01-28 vs ATL 2016-06-27. Figures from Yahoo daily bars (split-adjusted); not investment advice."
+  },
+  {
+    "ticker": "COIN",
+    "ath_price": 444.65,
+    "ath_date": "2025-07-18",
+    "atl_price": 31.55,
+    "atl_date": "2023-01-06",
+    "days_between": 924,
+    "speed_label": "Rocket",
+    "risk_label": "Speculative",
+    "analysis": "COIN: move from ATL to ATH is ~14.1x over 924 days (Rocket). ATH 2025-07-18 vs ATL 2023-01-06. Figures from Yahoo daily bars (split-adjusted); not investment advice."
+  },
+  {
+    "ticker": "AMD",
+    "ath_price": 267.08,
+    "ath_date": "2025-10-29",
+    "atl_price": 2.6,
+    "atl_date": "2016-04-21",
+    "days_between": 3478,
+    "speed_label": "Fast Mover",
+    "risk_label": "Aggressive",
+    "analysis": "AMD: move from ATL to ATH is ~102.7x over 3478 days (Fast Mover). ATH 2025-10-29 vs ATL 2016-04-21. Figures from Yahoo daily bars (split-adjusted); not investment advice."
+  }
+]

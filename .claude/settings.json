@@ -1,0 +1,46 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -c \"import sys, json; d=json.load(sys.stdin); cmd=d.get('tool_input',{}).get('command',''); sys.exit(1) if any(x in cmd for x in ['rm -rf','DROP TABLE','sudo rm']) else print('ok')\""
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo \"[hook] File written at $(date)\" >> src/data/hook_log.txt"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -c \"import os; print('\\n[Stop hook] Run complete. Outputs in src/outputs/') if os.path.exists('src/outputs/aggregated.json') else print('[Stop hook] Warning: aggregated.json not found')\""
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -c \"import sys,json; d=json.load(sys.stdin); print(f\\\"[hook] Subagent done: {d.get('agent_type','unknown')}\\\")\" 2>/dev/null || true"
+          }
+        ]
+      }
+    ]
+  }
+}

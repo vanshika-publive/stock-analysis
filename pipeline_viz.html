@@ -1,0 +1,1009 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Stock Analysis Pipeline — Agent & Data Flow</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --surface2: #21262d;
+    --border: #30363d;
+    --text: #e6edf3;
+    --muted: #8b949e;
+    --blue: #58a6ff;
+    --green: #3fb950;
+    --orange: #f0883e;
+    --red: #f85149;
+    --purple: #bc8cff;
+    --yellow: #e3b341;
+    --cyan: #39d353;
+    --teal: #1f6feb;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 14px;
+    min-height: 100vh;
+  }
+
+  /* ── Header ── */
+  header {
+    background: linear-gradient(135deg, #0d1117 0%, #161b22 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 24px 40px;
+    display: flex; align-items: center; gap: 16px;
+  }
+  header .logo { font-size: 28px; }
+  header h1 { font-size: 20px; font-weight: 700; }
+  header p { font-size: 13px; color: var(--muted); margin-top: 2px; }
+
+  /* ── Tabs ── */
+  .tabs {
+    display: flex; gap: 4px;
+    padding: 16px 40px 0;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .tab {
+    padding: 8px 18px;
+    border-radius: 6px 6px 0 0;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--muted);
+    border: 1px solid transparent;
+    border-bottom: none;
+    transition: all .15s;
+    background: transparent;
+  }
+  .tab:hover { color: var(--text); background: var(--surface2); }
+  .tab.active {
+    color: var(--text);
+    background: var(--bg);
+    border-color: var(--border);
+    border-bottom-color: var(--bg);
+    margin-bottom: -1px;
+  }
+
+  /* ── Content ── */
+  .panel { display: none; padding: 32px 40px; }
+  .panel.active { display: block; }
+
+  /* ── Pipeline Diagram ── */
+  .pipeline {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    max-width: 960px;
+    margin: 0 auto;
+  }
+
+  .pipeline-row {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+  }
+
+  /* agent node */
+  .agent-node {
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px 20px;
+    cursor: pointer;
+    transition: all .2s;
+    position: relative;
+  }
+  .agent-node:hover { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(88,166,255,.12); }
+  .agent-node.active-node { border-color: var(--blue); background: rgba(88,166,255,.05); }
+
+  .agent-node .badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 11px; font-weight: 600;
+    padding: 2px 8px; border-radius: 20px;
+    margin-bottom: 8px;
+  }
+  .badge.fetcher  { background: rgba(63,185,80,.15);  color: var(--green);  border: 1px solid rgba(63,185,80,.3);  }
+  .badge.ath      { background: rgba(88,166,255,.15); color: var(--blue);   border: 1px solid rgba(88,166,255,.3); }
+  .badge.delta    { background: rgba(240,136,62,.15); color: var(--orange); border: 1px solid rgba(240,136,62,.3); }
+  .badge.analyst  { background: rgba(188,140,255,.15);color: var(--purple); border: 1px solid rgba(188,140,255,.3);}
+  .badge.agg      { background: rgba(57,211,83,.15);  color: #39d353;       border: 1px solid rgba(57,211,83,.3);  }
+  .badge.output   { background: rgba(227,179,65,.15); color: var(--yellow); border: 1px solid rgba(227,179,65,.3); }
+  .badge.hook     { background: rgba(248,81,73,.15);  color: var(--red);    border: 1px solid rgba(248,81,73,.3);  }
+
+  .agent-node h3 { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+  .agent-node p  { font-size: 12px; color: var(--muted); line-height: 1.5; }
+  .agent-node .tag-row { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
+  .tag {
+    font-size: 11px; padding: 2px 6px; border-radius: 4px;
+    background: var(--surface2); color: var(--muted); border: 1px solid var(--border);
+    font-family: monospace;
+  }
+
+  /* arrow between nodes */
+  .arrow-down {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 6px 0;
+    position: relative;
+  }
+  .arrow-line {
+    width: 2px; flex: 1;
+    background: linear-gradient(to bottom, var(--border), var(--blue));
+    min-height: 28px;
+  }
+  .arrow-label {
+    position: absolute;
+    left: 50%; transform: translateX(-50%);
+    top: 50%; transform: translate(-50%, -50%);
+    white-space: nowrap;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-size: 11px;
+    color: var(--muted);
+    padding: 2px 7px;
+    font-family: monospace;
+  }
+  .arrow-head {
+    width: 0; height: 0;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-top: 7px solid var(--blue);
+  }
+
+  /* Hook badges overlaid on arrows */
+  .hook-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: rgba(248,81,73,.12);
+    border: 1px solid rgba(248,81,73,.35);
+    color: var(--red);
+    border-radius: 4px;
+    font-size: 11px; font-weight: 600;
+    padding: 2px 7px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all .15s;
+  }
+  .hook-badge:hover { background: rgba(248,81,73,.22); }
+
+  /* right-side sidebar for detail */
+  .layout { display: flex; gap: 28px; align-items: flex-start; }
+  .pipeline-wrap { flex: 1; min-width: 0; }
+  .detail-panel {
+    width: 340px; flex-shrink: 0;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    position: sticky;
+    top: 24px;
+    min-height: 300px;
+  }
+  .detail-panel h4 { font-size: 14px; font-weight: 700; margin-bottom: 12px; }
+  .detail-panel .empty { color: var(--muted); font-size: 13px; }
+  .kv-row { display: flex; gap: 8px; margin-bottom: 8px; align-items: flex-start; }
+  .kv-key { color: var(--muted); font-size: 12px; min-width: 80px; padding-top: 1px; }
+  .kv-val { font-size: 12px; flex: 1; font-family: monospace; word-break: break-all; }
+  .kv-val.green  { color: var(--green); }
+  .kv-val.blue   { color: var(--blue); }
+  .kv-val.orange { color: var(--orange); }
+  .kv-val.purple { color: var(--purple); }
+  .kv-val.red    { color: var(--red); }
+  .kv-val.yellow { color: var(--yellow); }
+  .divider { border: none; border-top: 1px solid var(--border); margin: 12px 0; }
+  pre.code {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 12px;
+    font-size: 11px;
+    overflow-x: auto;
+    white-space: pre;
+    color: var(--cyan);
+    margin-top: 6px;
+    line-height: 1.6;
+  }
+
+  /* multi-ticker fan */
+  .ticker-fan {
+    display: flex; gap: 6px; flex-wrap: wrap;
+    margin: 8px 0 0;
+  }
+  .ticker-chip {
+    font-size: 11px; font-weight: 700;
+    padding: 3px 8px; border-radius: 4px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    font-family: monospace;
+    color: var(--green);
+  }
+
+  /* ── JSON Flow Tab ── */
+  .json-flow { max-width: 860px; margin: 0 auto; }
+  .stage-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin-bottom: 18px;
+    overflow: hidden;
+  }
+  .stage-header {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px 18px;
+    background: var(--surface2);
+    cursor: pointer;
+    user-select: none;
+  }
+  .stage-num {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700;
+    flex-shrink: 0;
+  }
+  .stage-header h3 { font-size: 14px; font-weight: 600; flex: 1; }
+  .stage-header .path { font-size: 11px; font-family: monospace; color: var(--muted); }
+  .stage-body { padding: 16px 18px; display: none; }
+  .stage-body.open { display: block; }
+  .field-table { width: 100%; border-collapse: collapse; }
+  .field-table th {
+    text-align: left; font-size: 11px; color: var(--muted);
+    padding: 4px 8px; border-bottom: 1px solid var(--border);
+    font-weight: 600; text-transform: uppercase; letter-spacing: .5px;
+  }
+  .field-table td { padding: 5px 8px; font-size: 12px; vertical-align: top; }
+  .field-table tr:not(:last-child) td { border-bottom: 1px solid rgba(48,54,61,.6); }
+  .field-table td:first-child { font-family: monospace; color: var(--blue); }
+  .field-table td:nth-child(2) { color: var(--orange); font-family: monospace; }
+  .field-table td:nth-child(3) { color: var(--muted); }
+  .new-field { background: rgba(63,185,80,.06); }
+  .new-badge {
+    font-size: 10px; background: rgba(63,185,80,.18); color: var(--green);
+    border-radius: 3px; padding: 1px 5px; margin-left: 4px; font-weight: 700;
+  }
+
+  /* ── Hooks Tab ── */
+  .hooks-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; max-width: 960px; }
+  .hook-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px 20px;
+  }
+  .hook-card h3 { font-size: 14px; font-weight: 700; margin-bottom: 4px; display: flex; align-items: center; gap: 8px; }
+  .hook-card .when { font-size: 12px; color: var(--muted); margin-bottom: 12px; }
+  .hook-card .purpose { font-size: 13px; line-height: 1.6; margin-bottom: 10px; }
+  .hook-card .impact { font-size: 12px; color: var(--muted); }
+  .hook-event {
+    display: inline-block;
+    font-size: 11px; font-weight: 700;
+    padding: 2px 8px; border-radius: 4px;
+    font-family: monospace;
+  }
+  .ev-pre   { background: rgba(240,136,62,.15); color: var(--orange); border: 1px solid rgba(240,136,62,.3); }
+  .ev-post  { background: rgba(88,166,255,.15); color: var(--blue);   border: 1px solid rgba(88,166,255,.3); }
+  .ev-stop  { background: rgba(63,185,80,.15);  color: var(--green);  border: 1px solid rgba(63,185,80,.3);  }
+  .ev-sub   { background: rgba(188,140,255,.15);color: var(--purple); border: 1px solid rgba(188,140,255,.3);}
+
+  /* log viewer */
+  .log-viewer {
+    background: #0d1117;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+    max-height: 240px;
+    overflow-y: auto;
+    font-family: monospace;
+    font-size: 12px;
+    line-height: 1.8;
+    margin-top: 20px;
+  }
+  .log-line { color: var(--muted); }
+  .log-line span.ts { color: var(--yellow); }
+  .log-line span.ev { color: var(--green); font-weight: 700; }
+
+  /* ── Legend ── */
+  .legend {
+    display: flex; flex-wrap: wrap; gap: 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-bottom: 24px;
+    font-size: 12px;
+  }
+  .legend-item { display: flex; align-items: center; gap: 6px; }
+  .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+
+  /* responsive */
+  @media (max-width: 800px) {
+    .layout { flex-direction: column; }
+    .detail-panel { width: 100%; position: static; }
+    .hooks-grid { grid-template-columns: 1fr; }
+    header, .tabs, .panel { padding-left: 16px; padding-right: 16px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">📈</div>
+  <div>
+    <h1>Stock Analysis Pipeline</h1>
+    <p>Agent orchestration · JSON data flow · Hook execution map</p>
+  </div>
+</header>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('pipeline')">🔁 Agent Pipeline</div>
+  <div class="tab" onclick="switchTab('jsonflow')">🗂 JSON Flow</div>
+  <div class="tab" onclick="switchTab('hooks')">🪝 Hooks</div>
+</div>
+
+<!-- ══════════ TAB 1: PIPELINE ══════════ -->
+<div class="panel active" id="tab-pipeline">
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:var(--green)"></div> Fetcher</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--blue)"></div> ATH/ATL Finder</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--orange)"></div> Time Delta</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--purple)"></div> Stock Analyst</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#39d353"></div> Aggregator</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--yellow)"></div> Output Skills</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--red)"></div> Hook</div>
+  </div>
+
+  <div class="layout">
+    <div class="pipeline-wrap">
+      <div class="pipeline">
+
+        <!-- FETCHER -->
+        <div class="agent-node" onclick="showDetail('fetcher')" id="node-fetcher">
+          <div class="badge fetcher">① SUBAGENT · per ticker</div>
+          <h3>stock-fetcher</h3>
+          <p>Calls yfinance → Yahoo Finance API. Downloads 10 years of daily OHLCV data (2,513 bars) per ticker.</p>
+          <div class="ticker-fan">
+            <span class="ticker-chip">AAPL</span><span class="ticker-chip">TSLA</span>
+            <span class="ticker-chip">MSFT</span><span class="ticker-chip">NVDA</span>
+            <span class="ticker-chip">AMZN</span><span class="ticker-chip">META</span>
+            <span class="ticker-chip">GOOGL</span><span class="ticker-chip">SPY</span>
+            <span class="ticker-chip">COIN</span><span class="ticker-chip">AMD</span>
+          </div>
+          <div class="tag-row">
+            <span class="tag">yfinance</span>
+            <span class="tag">pandas</span>
+            <span class="tag">WebFetch → query1.finance.yahoo.com</span>
+          </div>
+        </div>
+
+        <!-- ARROW + HOOKS -->
+        <div class="arrow-down" style="padding: 10px 0; display:flex; flex-direction:row; align-items:center; gap:12px;">
+          <div style="display:flex;flex-direction:column;align-items:center;flex:1;">
+            <div class="arrow-line" style="min-height:14px;"></div>
+            <div style="font-size:11px;font-family:monospace;color:var(--muted);background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:2px 7px;white-space:nowrap;">
+              01_fetcher/{TICKER}.json × 10
+            </div>
+            <div class="arrow-line" style="min-height:14px;background:linear-gradient(to bottom,var(--blue),var(--border));"></div>
+            <div class="arrow-head"></div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0;">
+            <span class="hook-badge" onclick="showDetail('hook-postwrite')">🪝 PostToolUse: Write → log</span>
+          </div>
+        </div>
+
+        <!-- ATH/ATL -->
+        <div class="agent-node" onclick="showDetail('ath')" id="node-ath">
+          <div class="badge ath">② SUBAGENT · aggregate</div>
+          <h3>ath-atl-finder</h3>
+          <p>Reads all 10 cached JSON files. Scans daily close arrays to find all-time high and all-time low prices and their dates.</p>
+          <div class="tag-row">
+            <span class="tag">reads: 01_fetcher/*.json</span>
+            <span class="tag">writes: 02_ath_atl.json</span>
+          </div>
+        </div>
+
+        <!-- ARROW -->
+        <div class="arrow-down" style="padding: 10px 0; display:flex; flex-direction:row; align-items:center; gap:12px;">
+          <div style="display:flex;flex-direction:column;align-items:center;flex:1;">
+            <div class="arrow-line" style="min-height:14px;"></div>
+            <div style="font-size:11px;font-family:monospace;color:var(--muted);background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:2px 7px;white-space:nowrap;">
+              02_ath_atl.json — adds ath/atl price + date
+            </div>
+            <div class="arrow-line" style="min-height:14px;background:linear-gradient(to bottom,var(--blue),var(--border));"></div>
+            <div class="arrow-head"></div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0;">
+            <span class="hook-badge" onclick="showDetail('hook-postwrite')">🪝 PostToolUse: Write → log</span>
+          </div>
+        </div>
+
+        <!-- TIME DELTA -->
+        <div class="agent-node" onclick="showDetail('delta')" id="node-delta">
+          <div class="badge delta">③ SUBAGENT</div>
+          <h3>time-delta-calculator</h3>
+          <p>Computes days between ATL and ATH. Assigns a speed label based on duration: Rocket &lt;1500d, Fast Mover 1500–2500d, Steady Climber 2500d+.</p>
+          <div class="tag-row">
+            <span class="tag">reads: 02_ath_atl.json</span>
+            <span class="tag">writes: 03_time_delta.json</span>
+          </div>
+        </div>
+
+        <!-- ARROW -->
+        <div class="arrow-down" style="padding: 10px 0; display:flex; flex-direction:row; align-items:center; gap:12px;">
+          <div style="display:flex;flex-direction:column;align-items:center;flex:1;">
+            <div class="arrow-line" style="min-height:14px;"></div>
+            <div style="font-size:11px;font-family:monospace;color:var(--muted);background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:2px 7px;white-space:nowrap;">
+              03_time_delta.json — adds days_between + speed_label
+            </div>
+            <div class="arrow-line" style="min-height:14px;background:linear-gradient(to bottom,var(--blue),var(--border));"></div>
+            <div class="arrow-head"></div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0;">
+            <span class="hook-badge" onclick="showDetail('hook-postwrite')">🪝 PostToolUse: Write → log</span>
+          </div>
+        </div>
+
+        <!-- ANALYST -->
+        <div class="agent-node" onclick="showDetail('analyst')" id="node-analyst">
+          <div class="badge analyst">④ SUBAGENT</div>
+          <h3>stock-analyst</h3>
+          <p>Writes human-readable analysis narrative per ticker. Assigns risk label: Conservative / Moderate / Aggressive / Speculative.</p>
+          <div class="tag-row">
+            <span class="tag">reads: 03_time_delta.json</span>
+            <span class="tag">writes: 04_aggregated_staged.json</span>
+          </div>
+        </div>
+
+        <!-- ARROW -->
+        <div class="arrow-down" style="padding: 10px 0; display:flex; flex-direction:row; align-items:center; gap:12px;">
+          <div style="display:flex;flex-direction:column;align-items:center;flex:1;">
+            <div class="arrow-line" style="min-height:14px;"></div>
+            <div style="font-size:11px;font-family:monospace;color:var(--muted);background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:2px 7px;white-space:nowrap;">
+              04_aggregated_staged.json — adds risk_label + analysis
+            </div>
+            <div class="arrow-line" style="min-height:14px;background:linear-gradient(to bottom,var(--blue),var(--border));"></div>
+            <div class="arrow-head"></div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0;">
+            <span class="hook-badge" onclick="showDetail('hook-postwrite')">🪝 PostToolUse: Write → log</span>
+            <span class="hook-badge" onclick="showDetail('hook-subagent')" style="background:rgba(188,140,255,.12);border-color:rgba(188,140,255,.35);color:var(--purple);">🪝 SubagentStop → echo agent type</span>
+          </div>
+        </div>
+
+        <!-- AGGREGATOR -->
+        <div class="agent-node" onclick="showDetail('agg')" id="node-agg">
+          <div class="badge agg">⑤ SUBAGENT</div>
+          <h3>aggregator</h3>
+          <p>Final consolidation pass. Copies staged data into the outputs/ folder as aggregated.json — the master source of truth.</p>
+          <div class="tag-row">
+            <span class="tag">reads: 04_aggregated_staged.json</span>
+            <span class="tag">writes: outputs/aggregated.json</span>
+          </div>
+        </div>
+
+        <!-- ARROW + STOP HOOK -->
+        <div class="arrow-down" style="padding: 10px 0; display:flex; flex-direction:row; align-items:center; gap:12px;">
+          <div style="display:flex;flex-direction:column;align-items:center;flex:1;">
+            <div class="arrow-line" style="min-height:14px;"></div>
+            <div style="font-size:11px;font-family:monospace;color:var(--muted);background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:2px 7px;white-space:nowrap;">
+              outputs/aggregated.json (final)
+            </div>
+            <div class="arrow-line" style="min-height:14px;background:linear-gradient(to bottom,var(--blue),var(--border));"></div>
+            <div class="arrow-head"></div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0;">
+            <span class="hook-badge" onclick="showDetail('hook-stop')" style="background:rgba(63,185,80,.12);border-color:rgba(63,185,80,.35);color:var(--green);">🪝 Stop → verify aggregated.json exists</span>
+          </div>
+        </div>
+
+        <!-- OUTPUT SKILLS row -->
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
+          <div class="agent-node" onclick="showDetail('xlsx')" id="node-xlsx">
+            <div class="badge output">OUTPUT SKILL</div>
+            <h3>xlsx</h3>
+            <p>generate_report.py → styled Excel workbook with risk color coding.</p>
+            <div class="tag-row">
+              <span class="tag">openpyxl</span>
+              <span class="tag">stock_report.xlsx</span>
+            </div>
+          </div>
+          <div class="agent-node" onclick="showDetail('pptx')" id="node-pptx">
+            <div class="badge output">OUTPUT SKILL</div>
+            <h3>pptx</h3>
+            <p>Slide deck from aggregated.json. One slide per ticker with analysis.</p>
+            <div class="tag-row">
+              <span class="tag">python-pptx</span>
+              <span class="tag">stock_deck.pptx</span>
+            </div>
+          </div>
+          <div class="agent-node" onclick="showDetail('pdf')" id="node-pdf">
+            <div class="badge output">OUTPUT SKILL</div>
+            <h3>pdf</h3>
+            <p>PDF export of the final report for sharing and archival.</p>
+            <div class="tag-row">
+              <span class="tag">weasyprint / fpdf2</span>
+              <span class="tag">stock_report.pdf</span>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /pipeline -->
+    </div><!-- /pipeline-wrap -->
+
+    <!-- DETAIL SIDEBAR -->
+    <div class="detail-panel" id="detail-panel">
+      <h4>ℹ️ Click any node for details</h4>
+      <p class="empty">Select an agent, hook, or output node from the pipeline on the left to see its full configuration and data contract.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ TAB 2: JSON FLOW ══════════ -->
+<div class="panel" id="tab-jsonflow">
+  <div class="json-flow">
+    <p style="color:var(--muted);margin-bottom:20px;font-size:13px;">Each pipeline stage progressively enriches the JSON object. Click any stage to expand its schema. <span style="color:var(--green);font-weight:600;">Green rows</span> are fields added at that stage.</p>
+
+    <!-- STAGE 01 -->
+    <div class="stage-card" onclick="toggleStage(this)">
+      <div class="stage-header">
+        <div class="stage-num" style="background:rgba(63,185,80,.2);color:var(--green);">01</div>
+        <div style="flex:1">
+          <h3>Fetcher Output — Raw yfinance Response</h3>
+          <div class="path">src/data/pipeline/01_fetcher/{TICKER}.json · ~269 KB each · 10 files</div>
+        </div>
+        <span style="color:var(--muted);font-size:18px;">▾</span>
+      </div>
+      <div class="stage-body">
+        <table class="field-table">
+          <thead><tr><th>Field path</th><th>Type</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr class="new-field"><td>chart.result[0].meta.symbol</td><td>string</td><td>Ticker (e.g. "AAPL") <span class="new-badge">NEW</span></td></tr>
+            <tr class="new-field"><td>chart.result[0].meta.currency</td><td>string</td><td>"USD" <span class="new-badge">NEW</span></td></tr>
+            <tr class="new-field"><td>chart.result[0].meta.regularMarketPrice</td><td>float</td><td>Current market price <span class="new-badge">NEW</span></td></tr>
+            <tr class="new-field"><td>chart.result[0].meta.fiftyTwoWeekHigh/Low</td><td>float</td><td>52-week range <span class="new-badge">NEW</span></td></tr>
+            <tr class="new-field"><td>chart.result[0].timestamp[]</td><td>int[]</td><td>Unix timestamps × 2513 bars <span class="new-badge">NEW</span></td></tr>
+            <tr class="new-field"><td>chart.result[0].indicators.quote[0].open[]</td><td>float[]</td><td>Open prices <span class="new-badge">NEW</span></td></tr>
+            <tr class="new-field"><td>chart.result[0].indicators.quote[0].high[]</td><td>float[]</td><td>Daily highs <span class="new-badge">NEW</span></td></tr>
+            <tr class="new-field"><td>chart.result[0].indicators.quote[0].low[]</td><td>float[]</td><td>Daily lows <span class="new-badge">NEW</span></td></tr>
+            <tr class="new-field"><td>chart.result[0].indicators.quote[0].close[]</td><td>float[]</td><td>Closing prices (used for ATH/ATL) <span class="new-badge">NEW</span></td></tr>
+            <tr class="new-field"><td>chart.result[0].indicators.adjclose[0].adjclose[]</td><td>float[]</td><td>Split-adjusted close <span class="new-badge">NEW</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- STAGE 02 -->
+    <div class="stage-card" onclick="toggleStage(this)">
+      <div class="stage-header">
+        <div class="stage-num" style="background:rgba(88,166,255,.2);color:var(--blue);">02</div>
+        <div style="flex:1">
+          <h3>ATH/ATL Finder Output</h3>
+          <div class="path">src/data/pipeline/02_ath_atl.json · 10 objects</div>
+        </div>
+        <span style="color:var(--muted);font-size:18px;">▾</span>
+      </div>
+      <div class="stage-body">
+        <table class="field-table">
+          <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td>ticker</td><td>string</td><td>Stock symbol (carried from meta)</td></tr>
+            <tr class="new-field"><td>ath_price</td><td>float</td><td>All-time high closing price in 10y range <span class="new-badge">NEW</span></td></tr>
+            <tr class="new-field"><td>ath_date</td><td>string (ISO)</td><td>Date of ATH e.g. "2025-12-03" <span class="new-badge">NEW</span></td></tr>
+            <tr class="new-field"><td>atl_price</td><td>float</td><td>All-time low closing price in 10y range <span class="new-badge">NEW</span></td></tr>
+            <tr class="new-field"><td>atl_date</td><td>string (ISO)</td><td>Date of ATL e.g. "2016-05-12" <span class="new-badge">NEW</span></td></tr>
+          </tbody>
+        </table>
+        <pre class="code">// Example object
+{
+  "ticker": "AAPL",
+  "ath_price": 288.62,
+  "ath_date": "2025-12-03",
+  "atl_price": 22.37,
+  "atl_date": "2016-05-12"
+}</pre>
+      </div>
+    </div>
+
+    <!-- STAGE 03 -->
+    <div class="stage-card" onclick="toggleStage(this)">
+      <div class="stage-header">
+        <div class="stage-num" style="background:rgba(240,136,62,.2);color:var(--orange);">03</div>
+        <div style="flex:1">
+          <h3>Time Delta Calculator Output</h3>
+          <div class="path">src/data/pipeline/03_time_delta.json · 10 objects</div>
+        </div>
+        <span style="color:var(--muted);font-size:18px;">▾</span>
+      </div>
+      <div class="stage-body">
+        <table class="field-table">
+          <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td>ticker</td><td>string</td><td>Stock symbol</td></tr>
+            <tr><td>ath_price / ath_date</td><td>float / string</td><td>Carried from stage 02</td></tr>
+            <tr><td>atl_price / atl_date</td><td>float / string</td><td>Carried from stage 02</td></tr>
+            <tr class="new-field"><td>days_between</td><td>int</td><td>Days from ATL → ATH <span class="new-badge">NEW</span></td></tr>
+            <tr class="new-field"><td>speed_label</td><td>enum string</td><td>"Rocket" &lt;1500d · "Fast Mover" 1500–2500d · "Steady Climber" 2500d+ <span class="new-badge">NEW</span></td></tr>
+          </tbody>
+        </table>
+        <pre class="code">// Speed label thresholds
+days_between < 1500       → "Rocket"
+days_between 1500–2500    → "Fast Mover"
+days_between > 2500       → "Steady Climber"</pre>
+      </div>
+    </div>
+
+    <!-- STAGE 04 -->
+    <div class="stage-card" onclick="toggleStage(this)">
+      <div class="stage-header">
+        <div class="stage-num" style="background:rgba(188,140,255,.2);color:var(--purple);">04</div>
+        <div style="flex:1">
+          <h3>Stock Analyst Output (Staged)</h3>
+          <div class="path">src/data/pipeline/04_aggregated_staged.json · 10 objects</div>
+        </div>
+        <span style="color:var(--muted);font-size:18px;">▾</span>
+      </div>
+      <div class="stage-body">
+        <table class="field-table">
+          <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td>ticker … speed_label</td><td>—</td><td>All fields from stages 01–03 carried forward</td></tr>
+            <tr class="new-field"><td>risk_label</td><td>enum string</td><td>"Conservative" · "Moderate" · "Aggressive" · "Speculative" <span class="new-badge">NEW</span></td></tr>
+            <tr class="new-field"><td>analysis</td><td>string</td><td>Human-readable narrative with disclaimer <span class="new-badge">NEW</span></td></tr>
+          </tbody>
+        </table>
+        <pre class="code">// Full object example
+{
+  "ticker": "TSLA",
+  "ath_price": 479.86,
+  "ath_date": "2024-12-17",
+  "atl_price": 14.07,
+  "atl_date": "2019-06-03",
+  "days_between": 2023,
+  "speed_label": "Fast Mover",
+  "risk_label": "Speculative",
+  "analysis": "TSLA: move from ATL to ATH is ~34.1x
+    over 2023 days (Fast Mover). ATH 2024-12-17
+    vs ATL 2019-06-03. Not investment advice."
+}</pre>
+      </div>
+    </div>
+
+    <!-- STAGE 05 -->
+    <div class="stage-card" onclick="toggleStage(this)">
+      <div class="stage-header">
+        <div class="stage-num" style="background:rgba(57,211,83,.2);color:#39d353;">05</div>
+        <div style="flex:1">
+          <h3>Final Aggregated Output</h3>
+          <div class="path">src/outputs/aggregated.json — master source of truth · identical schema to stage 04</div>
+        </div>
+        <span style="color:var(--muted);font-size:18px;">▾</span>
+      </div>
+      <div class="stage-body">
+        <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">No new fields added. This is the consolidation step — all 10 ticker objects assembled into one canonical file consumed by output skills.</p>
+        <p style="font-size:13px;"><strong>Consumed by:</strong></p>
+        <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
+          <span style="background:rgba(227,179,65,.12);border:1px solid rgba(227,179,65,.3);color:var(--yellow);padding:4px 10px;border-radius:6px;font-size:12px;font-family:monospace;">stock_report.xlsx</span>
+          <span style="background:rgba(227,179,65,.12);border:1px solid rgba(227,179,65,.3);color:var(--yellow);padding:4px 10px;border-radius:6px;font-size:12px;font-family:monospace;">stock_deck.pptx</span>
+          <span style="background:rgba(227,179,65,.12);border:1px solid rgba(227,179,65,.3);color:var(--yellow);padding:4px 10px;border-radius:6px;font-size:12px;font-family:monospace;">stock_report.pdf</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════════ TAB 3: HOOKS ══════════ -->
+<div class="panel" id="tab-hooks">
+  <p style="color:var(--muted);margin-bottom:24px;font-size:13px;">All hooks are defined in <code style="font-family:monospace;color:var(--blue);">.claude/settings.json</code>. They fire automatically at runtime — no agent code changes required.</p>
+
+  <div class="hooks-grid">
+
+    <!-- PreToolUse -->
+    <div class="hook-card">
+      <h3><span class="hook-event ev-pre">PreToolUse</span> Security Guard</h3>
+      <div class="when">🔫 Fires before any <strong>Bash</strong> tool invocation</div>
+      <div class="purpose">Scans the bash command string for dangerous patterns. If matched, exits with code 1 to <strong>block the command entirely</strong>.</div>
+      <div class="impact">Blocked patterns: <code style="font-family:monospace;color:var(--red);">rm -rf</code> · <code style="font-family:monospace;color:var(--red);">DROP TABLE</code> · <code style="font-family:monospace;color:var(--red);">sudo rm</code></div>
+      <pre class="code">python3 -c "
+import sys, json
+d = json.load(sys.stdin)
+cmd = d.get('tool_input',{}).get('command','')
+blocked = ['rm -rf','DROP TABLE','sudo rm']
+if any(x in cmd for x in blocked):
+    sys.exit(1)  # ← BLOCKS the tool call
+else:
+    print('ok')
+"</pre>
+      <div style="margin-top:10px;font-size:12px;color:var(--muted);">
+        <strong style="color:var(--orange);">Why it helps:</strong> CLAUDE.md forbids <code style="font-family:monospace;">rm -rf</code> anywhere. This hook enforces that rule automatically without relying on the LLM to remember.
+      </div>
+    </div>
+
+    <!-- PostToolUse Write -->
+    <div class="hook-card">
+      <h3><span class="hook-event ev-post">PostToolUse</span> Write Audit Log</h3>
+      <div class="when">📝 Fires after every <strong>Write</strong> tool call</div>
+      <div class="purpose">Appends a timestamped entry to <code style="font-family:monospace;color:var(--blue);">src/data/hook_log.txt</code> each time any agent writes a file.</div>
+      <pre class="code">echo "[hook] File written at $(date)" \
+  >> src/data/hook_log.txt</pre>
+      <div style="margin-top:10px;font-size:12px;color:var(--muted);">
+        <strong style="color:var(--blue);">Why it helps:</strong> Creates a passive audit trail across all 5 pipeline stages. 18 entries were logged during the last full run — one per JSON file written.
+      </div>
+    </div>
+
+    <!-- Stop Hook -->
+    <div class="hook-card">
+      <h3><span class="hook-event ev-stop">Stop</span> Pipeline Completion Check</h3>
+      <div class="when">✅ Fires when the entire Claude run completes</div>
+      <div class="purpose">Checks whether <code style="font-family:monospace;color:var(--green);">src/outputs/aggregated.json</code> exists. Prints success or warning accordingly.</div>
+      <pre class="code">python3 -c "
+import os
+if os.path.exists('src/outputs/aggregated.json'):
+    print('[Stop hook] Run complete.
+          Outputs in src/outputs/')
+else:
+    print('[Stop hook] Warning:
+          aggregated.json not found')
+"</pre>
+      <div style="margin-top:10px;font-size:12px;color:var(--muted);">
+        <strong style="color:var(--green);">Why it helps:</strong> Acts as a final gate. If the aggregator failed silently, this hook surfaces the failure immediately instead of letting broken output flow into xlsx/pptx/pdf skills.
+      </div>
+    </div>
+
+    <!-- SubagentStop -->
+    <div class="hook-card">
+      <h3><span class="hook-event ev-sub">SubagentStop</span> Subagent Completion Log</h3>
+      <div class="when">🤖 Fires when any subagent finishes execution</div>
+      <div class="purpose">Reads the subagent type from stdin and echoes it to stdout, providing a live breadcrumb trail of which agents have completed.</div>
+      <pre class="code">python3 -c "
+import sys, json
+d = json.load(sys.stdin)
+agent = d.get('agent_type','unknown')
+print(f'[hook] Subagent done: {agent}')
+" 2>/dev/null || true</pre>
+      <div style="margin-top:10px;font-size:12px;color:var(--muted);">
+        <strong style="color:var(--purple);">Why it helps:</strong> Since the 5 subagents run sequentially, this hook provides real-time progress visibility. The <code style="font-family:monospace;">|| true</code> ensures a bad stdin never crashes the pipeline.
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Permissions -->
+  <div style="margin-top:28px;">
+    <h3 style="font-size:15px;font-weight:700;margin-bottom:12px;">⚙️ Settings & Permissions (<code style="font-family:monospace;font-size:13px;">.claude/settings.local.json</code>)</h3>
+    <div class="hook-card" style="max-width:480px;">
+      <p style="font-size:13px;color:var(--muted);margin-bottom:10px;">Network access is explicitly scoped to Yahoo Finance only:</p>
+      <pre class="code">{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:query1.finance.yahoo.com)"
+    ]
+  }
+}</pre>
+      <div style="margin-top:10px;font-size:12px;color:var(--muted);">This means the fetcher agent cannot accidentally call any other external URL — a minimal-privilege network policy.</div>
+    </div>
+  </div>
+
+  <!-- Hook Log -->
+  <div style="margin-top:28px;">
+    <h3 style="font-size:15px;font-weight:700;margin-bottom:8px;">📋 Live Hook Log Preview (<code style="font-family:monospace;font-size:13px;">src/data/hook_log.txt</code>)</h3>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:10px;">18 entries from the last pipeline run (PostToolUse: Write events). Each corresponds to a JSON file written by an agent.</p>
+    <div class="log-viewer" id="log-viewer">
+      <div class="log-line"><span class="ev">[hook]</span> File written at <span class="ts">Tue Apr 14 18:05:41 IST 2026</span> — 01_fetcher/AAPL.json</div>
+      <div class="log-line"><span class="ev">[hook]</span> File written at <span class="ts">Tue Apr 14 18:05:43 IST 2026</span> — 01_fetcher/TSLA.json</div>
+      <div class="log-line"><span class="ev">[hook]</span> File written at <span class="ts">Tue Apr 14 18:05:46 IST 2026</span> — 01_fetcher/MSFT.json</div>
+      <div class="log-line"><span class="ev">[hook]</span> File written at <span class="ts">Tue Apr 14 18:05:48 IST 2026</span> — 01_fetcher/NVDA.json</div>
+      <div class="log-line"><span class="ev">[hook]</span> File written at <span class="ts">Tue Apr 14 18:05:51 IST 2026</span> — 01_fetcher/AMZN.json</div>
+      <div class="log-line"><span class="ev">[hook]</span> File written at <span class="ts">Tue Apr 14 18:05:53 IST 2026</span> — 01_fetcher/META.json</div>
+      <div class="log-line"><span class="ev">[hook]</span> File written at <span class="ts">Tue Apr 14 18:05:55 IST 2026</span> — 01_fetcher/GOOGL.json</div>
+      <div class="log-line"><span class="ev">[hook]</span> File written at <span class="ts">Tue Apr 14 18:05:57 IST 2026</span> — 01_fetcher/SPY.json</div>
+      <div class="log-line"><span class="ev">[hook]</span> File written at <span class="ts">Tue Apr 14 18:06:00 IST 2026</span> — 01_fetcher/COIN.json</div>
+      <div class="log-line"><span class="ev">[hook]</span> File written at <span class="ts">Tue Apr 14 18:06:02 IST 2026</span> — 01_fetcher/AMD.json</div>
+      <div class="log-line"><span class="ev">[hook]</span> File written at <span class="ts">Tue Apr 14 18:06:10 IST 2026</span> — 01_fetcher/manifest.json</div>
+      <div class="log-line"><span class="ev">[hook]</span> File written at <span class="ts">Tue Apr 14 18:06:22 IST 2026</span> — 02_ath_atl.json</div>
+      <div class="log-line"><span class="ev">[hook]</span> File written at <span class="ts">Tue Apr 14 18:06:34 IST 2026</span> — 03_time_delta.json</div>
+      <div class="log-line"><span class="ev">[hook]</span> File written at <span class="ts">Tue Apr 14 18:06:47 IST 2026</span> — 04_aggregated_staged.json</div>
+      <div class="log-line"><span class="ev">[hook]</span> File written at <span class="ts">Tue Apr 14 18:06:57 IST 2026</span> — outputs/aggregated.json</div>
+      <div class="log-line" style="color:var(--green);font-weight:600;"><span class="ev">[Stop hook]</span> Run complete. <span class="ts">Outputs in src/outputs/</span> ✓</div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Tab switching
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach((t,i) => t.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  const tabs = ['pipeline','jsonflow','hooks'];
+  document.querySelectorAll('.tab')[tabs.indexOf(name)].classList.add('active');
+  document.getElementById('tab-'+name).classList.add('active');
+}
+
+// Stage expand/collapse
+function toggleStage(card) {
+  const body = card.querySelector('.stage-body');
+  const arrow = card.querySelector('.stage-header span');
+  body.classList.toggle('open');
+  arrow.textContent = body.classList.contains('open') ? '▴' : '▾';
+}
+
+// Detail panel data
+const details = {
+  fetcher: {
+    title: '① stock-fetcher',
+    color: 'green',
+    rows: [
+      ['Type', 'Subagent (per ticker × 10)', 'green'],
+      ['Input', 'Ticker symbol parameter', 'blue'],
+      ['API', 'yfinance → query1.finance.yahoo.com', 'blue'],
+      ['Range', '10 years daily (10y / 1d granularity)', ''],
+      ['Bars', '~2,513 OHLCV bars per ticker', ''],
+      ['Output', 'src/data/pipeline/01_fetcher/{TICKER}.json', 'green'],
+      ['Also writes', 'manifest.json (list of all tickers)', 'green'],
+      ['File size', '~133 KB (COIN) to ~282 KB (NVDA)', ''],
+      ['Libraries', 'yfinance, pandas', 'orange'],
+      ['Cache', 'Does NOT re-fetch if file exists', ''],
+      ['Alt (prod)', 'Polygon.io (requires API key)', 'yellow'],
+    ],
+    note: 'Foundation of the pipeline. All 9 downstream fields ultimately derive from the raw close[] array this agent fetches.'
+  },
+  ath: {
+    title: '② ath-atl-finder',
+    color: 'blue',
+    rows: [
+      ['Type', 'Subagent (aggregate, runs once)', 'blue'],
+      ['Reads', 'src/data/pipeline/01_fetcher/*.json', 'blue'],
+      ['Writes', 'src/data/pipeline/02_ath_atl.json', 'green'],
+      ['Logic', 'max(close[]) → ATH · min(close[]) → ATL', ''],
+      ['Adds', 'ath_price, ath_date, atl_price, atl_date', 'green'],
+      ['Format', 'Array of 10 objects, one per ticker', ''],
+    ],
+    note: 'Collapses ~25,130 data points (10 tickers × 2,513 bars) into 40 clean values.'
+  },
+  delta: {
+    title: '③ time-delta-calculator',
+    color: 'orange',
+    rows: [
+      ['Type', 'Subagent', 'orange'],
+      ['Reads', 'src/data/pipeline/02_ath_atl.json', 'blue'],
+      ['Writes', 'src/data/pipeline/03_time_delta.json', 'green'],
+      ['Adds', 'days_between (int), speed_label (enum)', 'green'],
+      ['Rocket', '< 1,500 days ATL→ATH', 'red'],
+      ['Fast Mover', '1,500 – 2,500 days', 'orange'],
+      ['Steady', '> 2,500 days', 'green'],
+    ],
+    note: 'Core analytical computation. The days_between field is what the whole project is built around.'
+  },
+  analyst: {
+    title: '④ stock-analyst',
+    color: 'purple',
+    rows: [
+      ['Type', 'Subagent (LLM-driven)', 'purple'],
+      ['Reads', 'src/data/pipeline/03_time_delta.json', 'blue'],
+      ['Writes', 'src/data/pipeline/04_aggregated_staged.json', 'green'],
+      ['Adds', 'risk_label, analysis (narrative)', 'green'],
+      ['Conservative', 'Stable long-term (AAPL, MSFT)', 'green'],
+      ['Moderate', 'Balanced growth', 'yellow'],
+      ['Aggressive', 'Higher volatility (META, AMD)', 'orange'],
+      ['Speculative', 'Extreme moves (TSLA, NVDA, COIN)', 'red'],
+    ],
+    note: 'Only agent that produces free-text output. The analysis string includes a mandatory disclaimer.'
+  },
+  agg: {
+    title: '⑤ aggregator',
+    color: 'cyan',
+    rows: [
+      ['Type', 'Subagent (final pass)', ''],
+      ['Reads', '04_aggregated_staged.json', 'blue'],
+      ['Writes', 'src/outputs/aggregated.json', 'green'],
+      ['Schema change', 'None — pure consolidation', 'yellow'],
+      ['Purpose', 'Canonical master file for output skills', ''],
+      ['Consumed by', 'xlsx skill, pptx skill, pdf skill', 'yellow'],
+    ],
+    note: 'Keeps pipeline/ staging clean and outputs/ as a stable, versioned artifact folder.'
+  },
+  xlsx: {
+    title: 'Output Skill — Excel',
+    color: 'yellow',
+    rows: [
+      ['Reads', 'src/outputs/aggregated.json', 'blue'],
+      ['Writes', 'src/outputs/stock_report.xlsx', 'yellow'],
+      ['Script', 'src/generate_report.py (openpyxl)', 'orange'],
+      ['Styling', 'Header: dark blue bg, white bold text', ''],
+      ['Conservative', 'Green row (#92D050)', 'green'],
+      ['Moderate', 'Yellow row (#FFFF00)', 'yellow'],
+      ['Aggressive', 'Orange row (#FF6600)', 'orange'],
+      ['Speculative', 'Red row (#FF0000)', 'red'],
+      ['Features', 'Frozen header, auto-filter, alt rows', ''],
+    ],
+    note: 'generate_report.py applies risk-color coding to each row automatically based on risk_label.'
+  },
+  pptx: {
+    title: 'Output Skill — PowerPoint',
+    color: 'yellow',
+    rows: [
+      ['Reads', 'src/outputs/aggregated.json', 'blue'],
+      ['Writes', 'src/outputs/stock_deck.pptx', 'yellow'],
+      ['Library', 'python-pptx', 'orange'],
+      ['Structure', 'One slide per ticker', ''],
+      ['Content', 'Ticker, ATH/ATL, days_between, analysis', ''],
+    ],
+    note: 'Deck uses the pptx skill from .claude/skills for production-quality formatting.'
+  },
+  pdf: {
+    title: 'Output Skill — PDF',
+    color: 'yellow',
+    rows: [
+      ['Reads', 'src/outputs/aggregated.json', 'blue'],
+      ['Writes', 'src/outputs/stock_report.pdf', 'yellow'],
+      ['Library', 'weasyprint or fpdf2', 'orange'],
+      ['Status', 'Not yet generated in current run', 'red'],
+    ],
+    note: 'Uses the pdf skill. Produces a shareable, printable version of the final report.'
+  },
+  'hook-postwrite': {
+    title: '🪝 PostToolUse: Write → Audit Log',
+    color: 'red',
+    rows: [
+      ['Event', 'PostToolUse', 'red'],
+      ['Matcher', 'Write tool', 'orange'],
+      ['Fires', 'After EVERY file write by any agent', ''],
+      ['Action', 'Appends timestamped line to hook_log.txt', ''],
+      ['Log path', 'src/data/hook_log.txt', 'blue'],
+      ['Entries', '18 entries in last full run', 'green'],
+    ],
+    note: 'Passive audit trail across all pipeline stages. Lets you reconstruct exactly when each JSON file was written.'
+  },
+  'hook-stop': {
+    title: '🪝 Stop → Completion Verifier',
+    color: 'red',
+    rows: [
+      ['Event', 'Stop (run ends)', 'green'],
+      ['Matcher', 'All completions', ''],
+      ['Checks', 'os.path.exists(aggregated.json)', 'blue'],
+      ['Pass', 'Prints "Run complete. Outputs in src/outputs/"', 'green'],
+      ['Fail', 'Prints "Warning: aggregated.json not found"', 'red'],
+    ],
+    note: 'Acts as the final gate. If the aggregator fails silently, this hook catches it before broken output reaches the xlsx/pptx/pdf skills.'
+  },
+  'hook-subagent': {
+    title: '🪝 SubagentStop → Progress Logger',
+    color: 'red',
+    rows: [
+      ['Event', 'SubagentStop', 'purple'],
+      ['Fires', 'When any subagent finishes', ''],
+      ['Action', 'Echoes agent_type from stdin', 'purple'],
+      ['Safety', '2>/dev/null || true (never crashes pipeline)', 'green'],
+    ],
+    note: 'Gives real-time breadcrumbs of subagent execution order. Particularly useful for debugging when the fetcher runs 10 times in a row.'
+  },
+};
+
+function showDetail(key) {
+  // remove active from all nodes
+  document.querySelectorAll('.agent-node').forEach(n => n.classList.remove('active-node'));
+  const nodeMap = {fetcher:'node-fetcher',ath:'node-ath',delta:'node-delta',analyst:'node-analyst',agg:'node-agg',xlsx:'node-xlsx',pptx:'node-pptx',pdf:'node-pdf'};
+  if (nodeMap[key]) document.getElementById(nodeMap[key])?.classList.add('active-node');
+
+  const d = details[key];
+  if (!d) return;
+  const panel = document.getElementById('detail-panel');
+  const colorMap = {green:'var(--green)',blue:'var(--blue)',orange:'var(--orange)',purple:'var(--purple)',red:'var(--red)',yellow:'var(--yellow)',cyan:'#39d353','':`var(--text)`};
+  let html = `<h4 style="color:${colorMap[d.color]||'var(--text)'}">${d.title}</h4>`;
+  d.rows.forEach(([k,v,c]) => {
+    html += `<div class="kv-row"><span class="kv-key">${k}</span><span class="kv-val" style="color:${colorMap[c||'']||'var(--text)'}">${v}</span></div>`;
+  });
+  if (d.note) {
+    html += `<hr class="divider"><p style="font-size:12px;color:var(--muted);line-height:1.6;">${d.note}</p>`;
+  }
+  panel.innerHTML = html;
+}
+</script>
+</body>
+</html>

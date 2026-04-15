@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>GitHub MCP — Complete Guide</title>
+<style>
+  :root {
+    --bg: #0d1117; --surface: #161b22; --surface2: #21262d;
+    --border: #30363d; --text: #e6edf3; --muted: #8b949e;
+    --blue: #58a6ff; --green: #3fb950; --orange: #f0883e;
+    --red: #f85149; --purple: #bc8cff; --yellow: #e3b341;
+    --teal: #39d353; --pink: #ff7b72;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:14px;line-height:1.7;}
+
+  /* ── Sidebar Layout ── */
+  .layout{display:flex;min-height:100vh;}
+  nav{width:240px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);position:sticky;top:0;height:100vh;overflow-y:auto;padding:20px 0;}
+  nav .logo{padding:0 20px 16px;border-bottom:1px solid var(--border);margin-bottom:12px;}
+  nav .logo h2{font-size:15px;font-weight:700;}
+  nav .logo p{font-size:11px;color:var(--muted);margin-top:2px;}
+  nav a{display:block;padding:6px 20px;font-size:12px;color:var(--muted);text-decoration:none;border-left:2px solid transparent;transition:all .15s;}
+  nav a:hover{color:var(--text);background:var(--surface2);}
+  nav a.active,nav a:hover{border-left-color:var(--blue);color:var(--blue);}
+  nav .section-label{padding:14px 20px 4px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);}
+
+  main{flex:1;max-width:860px;padding:40px 48px;min-width:0;}
+
+  /* ── Typography ── */
+  h1{font-size:28px;font-weight:800;margin-bottom:6px;line-height:1.2;}
+  h2{font-size:20px;font-weight:700;margin:48px 0 16px;padding-bottom:8px;border-bottom:1px solid var(--border);}
+  h3{font-size:15px;font-weight:700;margin:24px 0 10px;color:var(--blue);}
+  h4{font-size:13px;font-weight:700;margin:16px 0 8px;color:var(--orange);}
+  p{color:#c9d1d9;margin-bottom:12px;font-size:13.5px;}
+  a{color:var(--blue);text-decoration:none;}
+  a:hover{text-decoration:underline;}
+  strong{color:var(--text);}
+  code{font-family:'SFMono-Regular',Consolas,monospace;font-size:12px;background:var(--surface2);border:1px solid var(--border);padding:1px 5px;border-radius:4px;color:var(--orange);}
+
+  /* ── Subtitle / intro ── */
+  .subtitle{color:var(--muted);font-size:15px;margin-bottom:6px;}
+  .tag-row{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0 32px;}
+  .tag{font-size:11px;padding:3px 10px;border-radius:20px;font-weight:600;}
+  .tag.green{background:rgba(63,185,80,.15);color:var(--green);border:1px solid rgba(63,185,80,.3);}
+  .tag.blue {background:rgba(88,166,255,.15);color:var(--blue); border:1px solid rgba(88,166,255,.3);}
+  .tag.orange{background:rgba(240,136,62,.15);color:var(--orange);border:1px solid rgba(240,136,62,.3);}
+  .tag.purple{background:rgba(188,140,255,.15);color:var(--purple);border:1px solid rgba(188,140,255,.3);}
+
+  /* ── Code blocks ── */
+  pre{background:#010409;border:1px solid var(--border);border-radius:8px;padding:16px 18px;overflow-x:auto;font-family:'SFMono-Regular',Consolas,monospace;font-size:12px;line-height:1.7;margin:12px 0 18px;position:relative;}
+  pre .lang-label{position:absolute;top:8px;right:12px;font-size:10px;color:var(--muted);font-family:sans-serif;text-transform:uppercase;letter-spacing:.5px;}
+  .str{color:#a5d6ff;}  .kw{color:var(--purple);}  .cm{color:var(--muted);}
+  .key{color:var(--blue);} .val{color:#a5d6ff);}  .num{color:var(--orange);}
+  .cmd{color:var(--teal);}  .flag{color:var(--yellow);}  .env{color:var(--orange);}
+
+  /* ── Callout boxes ── */
+  .callout{border-radius:8px;padding:14px 16px;margin:16px 0;font-size:13px;line-height:1.6;display:flex;gap:12px;align-items:flex-start;}
+  .callout .icon{font-size:18px;flex-shrink:0;margin-top:1px;}
+  .callout.info {background:rgba(88,166,255,.08);border:1px solid rgba(88,166,255,.25);color:#c9d1d9;}
+  .callout.warn {background:rgba(240,136,62,.08);border:1px solid rgba(240,136,62,.25);color:#c9d1d9;}
+  .callout.tip  {background:rgba(63,185,80,.08); border:1px solid rgba(63,185,80,.25); color:#c9d1d9;}
+  .callout.key  {background:rgba(188,140,255,.08);border:1px solid rgba(188,140,255,.25);color:#c9d1d9;}
+
+  /* ── Step cards ── */
+  .steps{display:flex;flex-direction:column;gap:0;}
+  .step{display:flex;gap:16px;position:relative;}
+  .step:not(:last-child)::after{content:'';position:absolute;left:19px;top:44px;bottom:0;width:2px;background:var(--border);}
+  .step-num{width:38px;height:38px;border-radius:50%;background:var(--surface2);border:2px solid var(--blue);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:var(--blue);flex-shrink:0;z-index:1;}
+  .step-body{flex:1;padding-bottom:28px;}
+  .step-body h4{font-size:14px;font-weight:700;color:var(--text);margin:8px 0 6px;}
+  .step-body p{font-size:13px;}
+
+  /* ── Tool grid ── */
+  .tool-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:12px 0 20px;}
+  .tool-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 16px;}
+  .tool-card h4{font-size:13px;font-weight:700;margin-bottom:4px;}
+  .tool-card p{font-size:12px;color:var(--muted);margin:0;}
+  .tool-card .tools{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px;}
+  .tool-name{font-family:monospace;font-size:11px;background:var(--surface2);border:1px solid var(--border);color:var(--teal);padding:2px 6px;border-radius:3px;}
+
+  /* ── Comparison table ── */
+  table{width:100%;border-collapse:collapse;margin:12px 0 20px;font-size:13px;}
+  th{background:var(--surface2);padding:10px 14px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);border:1px solid var(--border);}
+  td{padding:9px 14px;border:1px solid var(--border);vertical-align:top;}
+  tr:nth-child(even) td{background:rgba(33,38,45,.5);}
+  .win{color:var(--green);font-weight:600;}
+  .lose{color:var(--red);}
+  .neutral{color:var(--muted);}
+
+  /* ── Auth method cards ── */
+  .auth-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:12px 0 20px;}
+  .auth-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 16px;}
+  .auth-card .auth-title{font-size:13px;font-weight:700;margin-bottom:6px;display:flex;align-items:center;gap:6px;}
+  .auth-card p{font-size:12px;color:var(--muted);margin:0;}
+  .auth-card .badge{font-size:10px;padding:1px 6px;border-radius:3px;font-weight:700;}
+  .badge-rec{background:rgba(63,185,80,.2);color:var(--green);}
+  .badge-ok {background:rgba(88,166,255,.2);color:var(--blue);}
+  .badge-adv{background:rgba(240,136,62,.2);color:var(--orange);}
+
+  /* ── Toolset list ── */
+  .toolset-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin:10px 0 20px;}
+  .toolset-chip{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:10px 12px;}
+  .toolset-chip .name{font-family:monospace;font-size:12px;font-weight:700;color:var(--blue);margin-bottom:2px;}
+  .toolset-chip .desc{font-size:11px;color:var(--muted);}
+  .toolset-chip.default-on{border-color:rgba(63,185,80,.4);background:rgba(63,185,80,.04);}
+  .toolset-chip .on-badge{font-size:9px;background:rgba(63,185,80,.2);color:var(--green);padding:1px 5px;border-radius:3px;font-weight:700;margin-left:4px;}
+
+  /* ── Where defined section ── */
+  .file-row{display:flex;gap:10px;align-items:flex-start;margin-bottom:10px;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:10px 14px;}
+  .file-row .path{font-family:monospace;font-size:11px;color:var(--orange);min-width:240px;flex-shrink:0;}
+  .file-row .desc{font-size:12px;color:var(--muted);}
+
+  /* ── Responsive ── */
+  @media(max-width:800px){
+    nav{display:none;} main{padding:24px 16px;}
+    .tool-grid,.auth-grid,.toolset-grid{grid-template-columns:1fr;}
+  }
+
+  hr.section-sep{border:none;border-top:1px solid var(--border);margin:40px 0;}
+</style>
+</head>
+<body>
+<div class="layout">
+
+<!-- ── Sidebar ── -->
+<nav>
+  <div class="logo">
+    <h2>🐙 GitHub MCP</h2>
+    <p>Complete Setup & Usage Guide</p>
+  </div>
+  <div class="section-label">Getting Started</div>
+  <a href="#what-is-mcp">What is MCP?</a>
+  <a href="#how-claude-connects">How Claude Connects</a>
+  <a href="#auth">Authentication</a>
+  <div class="section-label">Setup</div>
+  <a href="#step-by-step">Step-by-Step Setup</a>
+  <a href="#config-examples">Config Examples</a>
+  <a href="#toolsets">Toolsets & Feature Flags</a>
+  <div class="section-label">Tools</div>
+  <a href="#tools-reference">Tools Reference</a>
+  <a href="#where-defined">Where Tools Are Defined</a>
+  <div class="section-label">Deep Dive</div>
+  <a href="#advantages">Advantages</a>
+  <a href="#vs-cli">MCP vs gh CLI vs REST</a>
+  <a href="#advanced">Advanced Config</a>
+  <a href="#resources">Resources</a>
+</nav>
+
+<!-- ── Main ── -->
+<main>
+
+  <h1>GitHub MCP Server</h1>
+  <p class="subtitle">How Claude connects to GitHub, what tools it gets, and how everything works end-to-end.</p>
+  <div class="tag-row">
+    <span class="tag green">Open Source</span>
+    <span class="tag blue">Official GitHub</span>
+    <span class="tag orange">105+ Tools</span>
+    <span class="tag purple">April 2025 Launch</span>
+  </div>
+
+  <!-- ────────────────────────────────────────────── -->
+  <h2 id="what-is-mcp">What is MCP?</h2>
+
+  <p><strong>Model Context Protocol (MCP)</strong> is an open standard (created by Anthropic) that lets AI models like Claude talk to external tools and services through a unified interface. Think of it as a universal plugin system for AI — instead of custom integrations per tool, any MCP-compatible server can plug in.</p>
+
+  <p>GitHub's official MCP server translates Claude's tool calls into real GitHub API operations — creating issues, reading files, reviewing PRs, scanning for secrets — all through natural language.</p>
+
+  <div class="callout info">
+    <span class="icon">ℹ️</span>
+    <div><strong>Architecture in one line:</strong> Claude → MCP Protocol → GitHub MCP Server → GitHub REST/GraphQL API → your repos, issues, PRs, actions.</div>
+  </div>
+
+  <p>The GitHub MCP server is <a href="https://github.com/github/github-mcp-server" target="_blank">open source</a>, written in Go, and built in collaboration with Anthropic. It launched in public preview in April 2025 and as of early 2026 exposes <strong>105+ tools across 19 toolsets</strong>.</p>
+
+
+  <!-- ────────────────────────────────────────────── -->
+  <h2 id="how-claude-connects">How Claude Connects to GitHub MCP</h2>
+
+  <p>Claude connects through an MCP host configuration. There are two deployment modes:</p>
+
+  <div class="tool-grid" style="grid-template-columns:1fr 1fr;">
+    <div class="tool-card" style="border-color:rgba(63,185,80,.4);">
+      <h4 style="color:var(--green);">☁️ Remote Server (Recommended)</h4>
+      <p>GitHub hosts the MCP server. Claude connects to it over HTTPS. Zero local install needed.</p>
+      <div style="margin-top:10px;font-family:monospace;font-size:11px;color:var(--muted);">https://api.githubcopilot.com/mcp/</div>
+    </div>
+    <div class="tool-card">
+      <h4 style="color:var(--orange);">🐳 Local Server (Docker / Binary)</h4>
+      <p>Run the MCP server locally via Docker or a compiled binary. Communicate over stdio or local HTTP.</p>
+      <div style="margin-top:10px;font-family:monospace;font-size:11px;color:var(--muted);">ghcr.io/github/github-mcp-server</div>
+    </div>
+  </div>
+
+  <h3>Connection Flow (step by step)</h3>
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-body">
+        <h4>Claude reads your MCP config</h4>
+        <p>On startup, Claude Desktop reads <code>claude_desktop_config.json</code> (or Claude Code reads <code>.mcp.json</code> / project settings). It finds the GitHub MCP server entry under <code>"mcpServers"</code>.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-body">
+        <h4>MCP handshake & tool discovery</h4>
+        <p>Claude connects to the server (via stdio for local, HTTPS for remote) and calls <code>tools/list</code>. The GitHub MCP server responds with the full schema of every enabled tool — name, description, input parameters.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-body">
+        <h4>Tool schemas loaded into context</h4>
+        <p>Claude now "knows" about all available GitHub tools. This is why toolset filtering matters — loading all 105+ tools consumes significant context window space (~150K tokens total if unconstrained).</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">4</div>
+      <div class="step-body">
+        <h4>User asks a natural language question</h4>
+        <p>For example: <em>"Show me all open PRs labeled bug in the api-server repo"</em>. Claude decides which tool to call and with what parameters.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">5</div>
+      <div class="step-body">
+        <h4>Claude issues a structured tool call</h4>
+        <p>Claude emits a structured call like <code>list_pull_requests(owner="acme", repo="api-server", labels=["bug"], state="open")</code> over the MCP protocol.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">6</div>
+      <div class="step-body">
+        <h4>GitHub MCP server calls the GitHub API</h4>
+        <p>The server translates the tool call into a GitHub REST or GraphQL API request, using your token for authentication. It validates inputs against the schema before making the request.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">7</div>
+      <div class="step-body">
+        <h4>Result returned to Claude</h4>
+        <p>GitHub API responds → MCP server structures the result → Claude receives it as tool output → Claude synthesizes a natural-language answer for you.</p>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ────────────────────────────────────────────── -->
+  <h2 id="auth">Authentication</h2>
+
+  <p>The GitHub MCP server supports three authentication methods. Your token is never sent to Claude — it lives in your local config or environment and is used only by the MCP server itself when calling the GitHub API.</p>
+
+  <div class="auth-grid">
+    <div class="auth-card">
+      <div class="auth-title">🔑 Personal Access Token (Classic) <span class="badge badge-ok">COMMON</span></div>
+      <p>Set <code>GITHUB_PERSONAL_ACCESS_TOKEN</code> env var. Good for personal use. Scoped permissions (repo, read:org, etc.). The server auto-filters tools based on your granted scopes.</p>
+    </div>
+    <div class="auth-card">
+      <div class="auth-title">🔐 Fine-Grained PAT <span class="badge badge-rec">RECOMMENDED</span></div>
+      <p>Modern token format with per-repo and per-permission granularity. GitHub enforces permissions at API level. More secure, especially for production use.</p>
+    </div>
+    <div class="auth-card">
+      <div class="auth-title">☁️ OAuth (Remote server) <span class="badge badge-ok">EASIEST</span></div>
+      <p>One-click OAuth flow via GitHub App. Works with VS Code 1.101+ and compatible hosts. Interactive scope up-grading available inline.</p>
+    </div>
+    <div class="auth-card">
+      <div class="auth-title">🏢 GitHub App Token <span class="badge badge-adv">ENTERPRISE</span></div>
+      <p>Server-to-server auth for GitHub Enterprise Server. Supports installation tokens. Under active development as of early 2026.</p>
+    </div>
+  </div>
+
+  <div class="callout tip">
+    <span class="icon">💡</span>
+    <div><strong>OAuth scope filtering (Jan 2026):</strong> With Classic PATs, the server automatically hides tools your token doesn't have permission to use. You won't see a <code>create_issue</code> tool if your PAT lacks <code>repo</code> scope.</div>
+  </div>
+
+
+  <!-- ────────────────────────────────────────────── -->
+  <h2 id="step-by-step">Step-by-Step Setup</h2>
+
+  <h3>Option A — Remote Server (Easiest)</h3>
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-body">
+        <h4>Generate a GitHub PAT</h4>
+        <p>Go to <strong>GitHub → Settings → Developer settings → Personal access tokens</strong>. Create a fine-grained token with the repo permissions you need (read contents, write issues, etc.).</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-body">
+        <h4>Add to Claude Code via CLI</h4>
+<pre><span class="cmd">claude mcp add-json</span> github <span class="str">'{
+  "type": "http",
+  "url": "https://api.githubcopilot.com/mcp",
+  "headers": {
+    "Authorization": "Bearer YOUR_GITHUB_PAT"
+  }
+}'</span><div class="lang-label">bash</div></pre>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-body">
+        <h4>Verify connection</h4>
+        <p>Start Claude Code and type: <em>"List my GitHub repositories"</em>. Claude will call the MCP server and return results if connected correctly.</p>
+      </div>
+    </div>
+  </div>
+
+  <h3>Option B — Local Docker Server</h3>
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-body">
+        <h4>Pull the Docker image</h4>
+<pre><span class="cmd">docker pull</span> ghcr.io/github/github-mcp-server<div class="lang-label">bash</div></pre>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-body">
+        <h4>Edit claude_desktop_config.json</h4>
+        <p>macOS: <code>~/Library/Application Support/Claude/claude_desktop_config.json</code><br/>Windows: <code>%APPDATA%\Claude\claude_desktop_config.json</code></p>
+<pre>{
+  <span class="key">"mcpServers"</span>: {
+    <span class="key">"github"</span>: {
+      <span class="key">"command"</span>: <span class="str">"docker"</span>,
+      <span class="key">"args"</span>: [
+        <span class="str">"run"</span>, <span class="str">"-i"</span>, <span class="str">"--rm"</span>,
+        <span class="str">"-e"</span>, <span class="str">"GITHUB_PERSONAL_ACCESS_TOKEN"</span>,
+        <span class="str">"ghcr.io/github/github-mcp-server"</span>
+      ],
+      <span class="key">"env"</span>: {
+        <span class="key">"GITHUB_PERSONAL_ACCESS_TOKEN"</span>: <span class="str">"ghp_your_token_here"</span>
+      }
+    }
+  }
+}<div class="lang-label">json</div></pre>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-body">
+        <h4>Restart Claude Desktop</h4>
+        <p>Claude Desktop will spawn the Docker container on startup and perform the MCP handshake automatically. A small plug icon appears in the UI when MCP servers are connected.</p>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ────────────────────────────────────────────── -->
+  <h2 id="config-examples">Config Examples</h2>
+
+  <h3>Minimal read-only setup (repos + code search only)</h3>
+<pre>{
+  <span class="key">"mcpServers"</span>: {
+    <span class="key">"github"</span>: {
+      <span class="key">"command"</span>: <span class="str">"docker"</span>,
+      <span class="key">"args"</span>: [<span class="str">"run"</span>, <span class="str">"-i"</span>, <span class="str">"--rm"</span>,
+        <span class="str">"-e"</span>, <span class="str">"GITHUB_PERSONAL_ACCESS_TOKEN"</span>,
+        <span class="str">"-e"</span>, <span class="str">"GITHUB_TOOLSETS=repos"</span>,
+        <span class="str">"-e"</span>, <span class="str">"GITHUB_READ_ONLY=1"</span>,
+        <span class="str">"ghcr.io/github/github-mcp-server"</span>
+      ],
+      <span class="key">"env"</span>: { <span class="key">"GITHUB_PERSONAL_ACCESS_TOKEN"</span>: <span class="str">"ghp_..."</span> }
+    }
+  }
+}<div class="lang-label">json</div></pre>
+
+  <h3>Full setup (repos + issues + PRs + Actions + security)</h3>
+<pre>{
+  <span class="key">"mcpServers"</span>: {
+    <span class="key">"github"</span>: {
+      <span class="key">"command"</span>: <span class="str">"docker"</span>,
+      <span class="key">"args"</span>: [<span class="str">"run"</span>, <span class="str">"-i"</span>, <span class="str">"--rm"</span>,
+        <span class="str">"-e"</span>, <span class="str">"GITHUB_PERSONAL_ACCESS_TOKEN"</span>,
+        <span class="str">"-e"</span>, <span class="str">"GITHUB_TOOLSETS=default,actions,code_security"</span>,
+        <span class="str">"ghcr.io/github/github-mcp-server"</span>
+      ],
+      <span class="key">"env"</span>: { <span class="key">"GITHUB_PERSONAL_ACCESS_TOKEN"</span>: <span class="str">"ghp_..."</span> }
+    }
+  }
+}<div class="lang-label">json</div></pre>
+
+  <h3>Fine-grained: enable only specific tools (not full toolsets)</h3>
+<pre><span class="cm"># Remote server via HTTP header (Jan 2026+ feature)</span>
+<span class="cmd">curl</span> https://api.githubcopilot.com/mcp/tools/list \
+  <span class="flag">-H</span> <span class="str">"Authorization: Bearer ghp_..."</span> \
+  <span class="flag">-H</span> <span class="str">"X-MCP-Tools: get_file_contents,search_code,create_issue"</span><div class="lang-label">bash</div></pre>
+
+  <div class="callout tip">
+    <span class="icon">💡</span>
+    <div><strong>Context tip:</strong> Loading only the tools you need dramatically reduces context window usage. <code>get_file_contents</code> + <code>pull_request_read</code> alone saves you from loading all 27 tools in the repos + pull_requests toolsets.</div>
+  </div>
+
+
+  <!-- ────────────────────────────────────────────── -->
+  <h2 id="toolsets">Toolsets & Feature Flags</h2>
+
+  <p>Toolsets are named groups of related tools. You select which toolsets to enable rather than individual tools (unless you use the <code>X-MCP-Tools</code> header for fine-grained control).</p>
+
+  <h3>Default toolsets (auto-enabled)</h3>
+  <div class="toolset-grid">
+    <div class="toolset-chip default-on"><div class="name">repos <span class="on-badge">DEFAULT</span></div><div class="desc">Browse files, search code, view commits</div></div>
+    <div class="toolset-chip default-on"><div class="name">issues <span class="on-badge">DEFAULT</span></div><div class="desc">Create, read, update, list issues</div></div>
+    <div class="toolset-chip default-on"><div class="name">pull_requests <span class="on-badge">DEFAULT</span></div><div class="desc">PR lifecycle, reviews, merges</div></div>
+    <div class="toolset-chip default-on"><div class="name">users <span class="on-badge">DEFAULT</span></div><div class="desc">User profiles, org membership</div></div>
+    <div class="toolset-chip default-on"><div class="name">context <span class="on-badge">DEFAULT</span></div><div class="desc">Core MCP context tools</div></div>
+  </div>
+
+  <h3>Optional toolsets</h3>
+  <div class="toolset-grid">
+    <div class="toolset-chip"><div class="name">actions</div><div class="desc">Workflow runs, logs, CI/CD</div></div>
+    <div class="toolset-chip"><div class="name">code_security</div><div class="desc">CodeQL alerts, Dependabot</div></div>
+    <div class="toolset-chip"><div class="name">secret_scanning</div><div class="desc">Leaked credential detection</div></div>
+    <div class="toolset-chip"><div class="name">projects</div><div class="desc">GitHub Projects management</div></div>
+    <div class="toolset-chip"><div class="name">discussions</div><div class="desc">Team discussions</div></div>
+    <div class="toolset-chip"><div class="name">notifications</div><div class="desc">Notification management</div></div>
+    <div class="toolset-chip"><div class="name">gists</div><div class="desc">Gist create/read/update</div></div>
+    <div class="toolset-chip"><div class="name">experiments</div><div class="desc">Experimental features</div></div>
+    <div class="toolset-chip"><div class="name">copilot</div><div class="desc">Copilot-specific tools</div></div>
+    <div class="toolset-chip"><div class="name">support_docs_search</div><div class="desc">Remote server only — search GitHub docs</div></div>
+  </div>
+
+  <h3>Enabling toolsets</h3>
+<pre><span class="cm"># Environment variable (Docker)</span>
+<span class="env">GITHUB_TOOLSETS</span>=default,actions,code_security
+
+<span class="cm"># CLI flag (local binary)</span>
+github-mcp-server <span class="flag">--toolsets</span> repos,issues,pull_requests,actions
+
+<span class="cm"># HTTP header (remote server)</span>
+X-MCP-Toolsets: default,code_security
+
+<span class="cm"># Keywords</span>
+default    <span class="cm"># = repos + issues + pull_requests + users + context</span>
+all        <span class="cm"># = every available toolset</span><div class="lang-label">bash</div></pre>
+
+  <h3>Security flags</h3>
+<pre><span class="cm"># Read-only mode — disables ALL write operations</span>
+<span class="env">GITHUB_READ_ONLY</span>=1                    <span class="cm"># Docker env var</span>
+github-mcp-server <span class="flag">--read-only</span>         <span class="cm"># CLI flag</span>
+
+<span class="cm"># Dynamic toolset discovery (reduces initial context load)</span>
+<span class="env">GITHUB_DYNAMIC_TOOLSETS</span>=1            <span class="cm"># Starts with 3 discovery tools only</span>
+
+<span class="cm"># Insiders (experimental features, Jan 2026+)</span>
+<span class="env">GITHUB_INSIDERS</span>=1
+X-GitHub-Insiders: true               <span class="cm"># HTTP header for remote</span><div class="lang-label">bash</div></pre>
+
+
+  <!-- ────────────────────────────────────────────── -->
+  <h2 id="tools-reference">Tools Reference</h2>
+  <p>The GitHub MCP server exposes 105+ tools. Here are the key ones by category:</p>
+
+  <div class="tool-grid" style="grid-template-columns:1fr 1fr;">
+
+    <div class="tool-card">
+      <h4 style="color:var(--blue);">📁 Repository & Files</h4>
+      <p>Browse, read, and search repository contents.</p>
+      <div class="tools">
+        <span class="tool-name">get_file_contents</span>
+        <span class="tool-name">list_repositories</span>
+        <span class="tool-name">search_code</span>
+        <span class="tool-name">search_repositories</span>
+        <span class="tool-name">get_commit</span>
+        <span class="tool-name">list_commits</span>
+        <span class="tool-name">create_repository</span>
+        <span class="tool-name">fork_repository</span>
+        <span class="tool-name">create_branch</span>
+        <span class="tool-name">push_files</span>
+      </div>
+    </div>
+
+    <div class="tool-card">
+      <h4 style="color:var(--green);">🐛 Issues</h4>
+      <p>Full issue lifecycle management.</p>
+      <div class="tools">
+        <span class="tool-name">list_issues</span>
+        <span class="tool-name">get_issue</span>
+        <span class="tool-name">create_issue</span>
+        <span class="tool-name">update_issue</span>
+        <span class="tool-name">add_issue_comment</span>
+        <span class="tool-name">list_issue_comments</span>
+        <span class="tool-name">search_issues</span>
+        <span class="tool-name">assign_issue</span>
+      </div>
+    </div>
+
+    <div class="tool-card">
+      <h4 style="color:var(--purple);">🔀 Pull Requests</h4>
+      <p>PR creation, review, and merge workflows.</p>
+      <div class="tools">
+        <span class="tool-name">list_pull_requests</span>
+        <span class="tool-name">get_pull_request</span>
+        <span class="tool-name">create_pull_request</span>
+        <span class="tool-name">pull_request_read</span>
+        <span class="tool-name">merge_pull_request</span>
+        <span class="tool-name">create_review</span>
+        <span class="tool-name">list_review_comments</span>
+        <span class="tool-name">get_pull_request_diff</span>
+      </div>
+    </div>
+
+    <div class="tool-card">
+      <h4 style="color:var(--orange);">⚙️ GitHub Actions</h4>
+      <p>Inspect and manage CI/CD workflows.</p>
+      <div class="tools">
+        <span class="tool-name">list_workflow_runs</span>
+        <span class="tool-name">get_workflow_run</span>
+        <span class="tool-name">list_workflow_jobs</span>
+        <span class="tool-name">get_job_logs</span>
+        <span class="tool-name">rerun_workflow</span>
+        <span class="tool-name">list_workflows</span>
+      </div>
+    </div>
+
+    <div class="tool-card">
+      <h4 style="color:var(--red);">🔒 Code Security</h4>
+      <p>Static analysis, dependency alerts, secret scanning.</p>
+      <div class="tools">
+        <span class="tool-name">list_code_scanning_alerts</span>
+        <span class="tool-name">get_code_scanning_alert</span>
+        <span class="tool-name">list_secret_scanning_alerts</span>
+        <span class="tool-name">get_secret_scanning_alert</span>
+        <span class="tool-name">list_dependabot_alerts</span>
+        <span class="tool-name">get_dependabot_alert</span>
+      </div>
+    </div>
+
+    <div class="tool-card">
+      <h4 style="color:var(--yellow);">📊 GitHub Projects</h4>
+      <p>Project boards, fields, and items (Jan 2026 consolidated tools).</p>
+      <div class="tools">
+        <span class="tool-name">projects_list</span>
+        <span class="tool-name">projects_get</span>
+      </div>
+      <p style="margin-top:8px;font-size:11px;color:var(--muted);">Consolidation in Jan 2026 reduced context usage by ~23,000 tokens vs old approach.</p>
+    </div>
+
+    <div class="tool-card">
+      <h4 style="color:var(--teal);">👤 Users & Orgs</h4>
+      <p>Profile info, organization membership, teams.</p>
+      <div class="tools">
+        <span class="tool-name">get_me</span>
+        <span class="tool-name">get_user</span>
+        <span class="tool-name">list_org_members</span>
+        <span class="tool-name">search_users</span>
+      </div>
+    </div>
+
+    <div class="tool-card">
+      <h4 style="color:var(--pink);">🧪 Discovery (Dynamic mode)</h4>
+      <p>Only these 3 tools load initially in dynamic toolset mode — rest load on demand.</p>
+      <div class="tools">
+        <span class="tool-name">list_available_toolsets</span>
+        <span class="tool-name">enable_toolset</span>
+        <span class="tool-name">get_toolset_tools</span>
+      </div>
+    </div>
+
+  </div>
+
+  <h3>Discover tools via CLI</h3>
+<pre><span class="cm"># Search tools by keyword</span>
+<span class="cmd">github-mcp-server tool-search</span> <span class="str">"issue"</span> <span class="flag">--max-results</span> 5
+<span class="cmd">github-mcp-server tool-search</span> <span class="str">"pull request"</span>
+<span class="cmd">github-mcp-server tool-search</span> <span class="str">"security"</span><div class="lang-label">bash</div></pre>
+
+
+  <!-- ────────────────────────────────────────────── -->
+  <h2 id="where-defined">Where Tools Are Defined</h2>
+
+  <p>Tools are defined server-side in the open-source GitHub MCP server repository. Claude never defines them — it only <em>discovers</em> them via the MCP handshake at runtime.</p>
+
+  <div class="file-row">
+    <div class="path">github.com/github/github-mcp-server</div>
+    <div class="desc">Root of the open-source Go server. All tool definitions live here.</div>
+  </div>
+  <div class="file-row">
+    <div class="path">pkg/github/*.go</div>
+    <div class="desc">Per-category Go files. Each file defines tools for a domain (e.g. <code>issues.go</code>, <code>pull_requests.go</code>, <code>repositories.go</code>). Tool name, description, input schema (JSON Schema), and handler function are all co-located.</div>
+  </div>
+  <div class="file-row">
+    <div class="path">pkg/toolsets/toolsets.go</div>
+    <div class="desc">Maps toolset names (e.g. <code>"repos"</code>, <code>"actions"</code>) to their constituent tools. This is where the grouping logic lives.</div>
+  </div>
+  <div class="file-row">
+    <div class="path">cmd/github-mcp-server/main.go</div>
+    <div class="desc">Entry point. Parses env vars (<code>GITHUB_TOOLSETS</code>, <code>GITHUB_READ_ONLY</code>, etc.), initialises the MCP server, registers toolsets, and starts listening (stdio or HTTP).</div>
+  </div>
+  <div class="file-row">
+    <div class="path">pkg/github/server.go</div>
+    <div class="desc">Server instructions — acts like a system prompt for the MCP server, guiding Claude on tool interdependencies, pagination patterns, and multi-tool workflows.</div>
+  </div>
+  <div class="file-row">
+    <div class="path">~/.claude/claude_desktop_config.json</div>
+    <div class="desc">Your local config. Tells Claude <em>where</em> the server is and what credentials to use — but does not define any tools.</div>
+  </div>
+
+  <div class="callout info">
+    <span class="icon">ℹ️</span>
+    <div><strong>Tool schema format:</strong> Each tool is a JSON Schema object with <code>name</code>, <code>description</code>, and <code>inputSchema</code> (properties, types, required fields). Claude uses the description to decide when to call a tool and the inputSchema to know what parameters to pass.</div>
+  </div>
+
+  <h3>Example: how a tool is defined in Go (simplified)</h3>
+<pre><span class="cm">// pkg/github/issues.go</span>
+mcp.NewTool(<span class="str">"create_issue"</span>,
+  mcp.WithDescription(<span class="str">"Create a new GitHub issue in a repository"</span>),
+  mcp.WithString(<span class="str">"owner"</span>,  mcp.Required(), mcp.Description(<span class="str">"Repository owner"</span>)),
+  mcp.WithString(<span class="str">"repo"</span>,   mcp.Required(), mcp.Description(<span class="str">"Repository name"</span>)),
+  mcp.WithString(<span class="str">"title"</span>,  mcp.Required(), mcp.Description(<span class="str">"Issue title"</span>)),
+  mcp.WithString(<span class="str">"body"</span>,   mcp.Description(<span class="str">"Issue body (Markdown)"</span>)),
+  mcp.WithArray(<span class="str">"labels"</span>,  mcp.Description(<span class="str">"Labels to apply"</span>)),
+)<div class="lang-label">go</div></pre>
+
+
+  <!-- ────────────────────────────────────────────── -->
+  <h2 id="advantages">Advantages of GitHub MCP</h2>
+
+  <div class="tool-grid" style="grid-template-columns:1fr 1fr;">
+    <div class="tool-card">
+      <h4>🗣️ Natural Language First</h4>
+      <p>No command memorization. <em>"Find all open PRs from last week that touch the auth module"</em> maps directly to a <code>search</code> tool call with the right parameters.</p>
+    </div>
+    <div class="tool-card">
+      <h4>🔗 Multi-Step Workflows</h4>
+      <p>Claude can chain multiple tool calls. <em>"Review the latest PR, check if tests passed, and post a summary comment"</em> = 3 tools in sequence, all in one request.</p>
+    </div>
+    <div class="tool-card">
+      <h4>🔐 Per-User Governance</h4>
+      <p>OAuth scopes are per-user. Each person's token controls exactly what they can do. Fine-grained PATs add per-repo permission control on top.</p>
+    </div>
+    <div class="tool-card">
+      <h4>📋 Structured Input Validation</h4>
+      <p>Every tool call is validated against a JSON Schema before hitting the GitHub API. No malformed requests, better error messages, safer automation.</p>
+    </div>
+    <div class="tool-card">
+      <h4>🔒 Read-Only Mode</h4>
+      <p><code>GITHUB_READ_ONLY=1</code> disables all write tools at the server level. Perfect for security-sensitive environments where you want AI with eyes but no hands.</p>
+    </div>
+    <div class="tool-card">
+      <h4>🏗️ Ecosystem Composable</h4>
+      <p>MCP works alongside Slack MCP, Jira MCP, and others. Claude can pull a GitHub PR, check the linked Jira ticket, and post a Slack update — all in one conversation.</p>
+    </div>
+    <div class="tool-card">
+      <h4>📡 Server Instructions (Oct 2025)</h4>
+      <p>The server ships with built-in guidance for Claude — teaching it the right tool sequencing for workflows like "review a PR" or "investigate a failing Action."</p>
+    </div>
+    <div class="tool-card">
+      <h4>🔍 Dynamic Toolsets (2026)</h4>
+      <p>Start with only 3 discovery tools in context. Load additional toolsets on demand. Keeps context lean and fast for simple tasks.</p>
+    </div>
+  </div>
+
+
+  <!-- ────────────────────────────────────────────── -->
+  <h2 id="vs-cli">MCP vs gh CLI vs GitHub REST API</h2>
+
+  <table>
+    <thead>
+      <tr><th>Dimension</th><th>GitHub MCP</th><th>gh CLI</th><th>GitHub REST API</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Setup complexity</strong></td>
+        <td class="neutral">Medium (config file)</td>
+        <td class="win">Low (brew install gh)</td>
+        <td class="lose">High (manual HTTP calls)</td>
+      </tr>
+      <tr>
+        <td><strong>Natural language</strong></td>
+        <td class="win">Yes — full NL interface</td>
+        <td class="neutral">Partial (you write commands)</td>
+        <td class="lose">No</td>
+      </tr>
+      <tr>
+        <td><strong>Context window cost</strong></td>
+        <td class="lose">~150K tokens (all tools)</td>
+        <td class="win">~2K tokens (CLI in training)</td>
+        <td class="neutral">Depends on usage</td>
+      </tr>
+      <tr>
+        <td><strong>Multi-step automation</strong></td>
+        <td class="win">Built-in, guided by server instructions</td>
+        <td class="neutral">Possible via scripting</td>
+        <td class="neutral">Possible but manual</td>
+      </tr>
+      <tr>
+        <td><strong>Permission governance</strong></td>
+        <td class="win">OAuth, scope filtering, read-only mode</td>
+        <td class="neutral">PAT scopes only</td>
+        <td class="neutral">PAT or OAuth token</td>
+      </tr>
+      <tr>
+        <td><strong>Input validation</strong></td>
+        <td class="win">JSON Schema at protocol level</td>
+        <td class="neutral">CLI flag validation</td>
+        <td class="lose">Manual</td>
+      </tr>
+      <tr>
+        <td><strong>Speed / latency</strong></td>
+        <td class="lose">Slower (remote server)</td>
+        <td class="win">Fast (local binary)</td>
+        <td class="win">Fastest (direct)</td>
+      </tr>
+      <tr>
+        <td><strong>Cross-tool composability</strong></td>
+        <td class="win">Works alongside Slack, Jira, etc.</td>
+        <td class="lose">GitHub only</td>
+        <td class="lose">GitHub only</td>
+      </tr>
+      <tr>
+        <td><strong>Audit trail</strong></td>
+        <td class="win">Structured tool calls, OAuth per-user</td>
+        <td class="neutral">Shell history</td>
+        <td class="neutral">API logs</td>
+      </tr>
+      <tr>
+        <td><strong>Best for</strong></td>
+        <td class="win">Multi-system AI workflows, governance-heavy teams</td>
+        <td class="win">Quick scripted GitHub tasks</td>
+        <td class="neutral">Custom integrations</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="callout warn">
+    <span class="icon">⚠️</span>
+    <div><strong>Context cost reality check:</strong> Loading all MCP tools (~150K tokens) vs using <code>gh</code> CLI in bash (~2K tokens) is a 98.7% difference. For simple single-repo workflows, <code>gh</code> CLI called from Claude's bash tool is often more efficient. MCP wins when you need cross-system composability or strong governance.</div>
+  </div>
+
+
+  <!-- ────────────────────────────────────────────── -->
+  <h2 id="advanced">Advanced Configuration</h2>
+
+  <h3>Tool-specific control (Jan 2026)</h3>
+<pre><span class="cm"># Only allow these 3 specific tools (via HTTP header)</span>
+X-MCP-Tools: get_file_contents,search_code,create_issue
+
+<span class="cm"># Combine tools + toolsets</span>
+X-MCP-Toolsets: default
+X-MCP-Tools: list_code_scanning_alerts<div class="lang-label">http</div></pre>
+
+  <h3>Dynamic toolset discovery mode</h3>
+<pre><span class="cm"># Only 3 discovery tools loaded initially</span>
+<span class="env">GITHUB_DYNAMIC_TOOLSETS</span>=1
+
+<span class="cm"># Claude then calls these to discover and enable more:</span>
+list_available_toolsets()    <span class="cm"># → shows what's available</span>
+enable_toolset("actions")    <span class="cm"># → activates workflow tools</span>
+get_toolset_tools("actions") <span class="cm"># → lists enabled tools</span><div class="lang-label">bash</div></pre>
+
+  <h3>HTTP server mode (Jan 2026)</h3>
+<pre><span class="cm"># Run as local HTTP server instead of stdio</span>
+github-mcp-server http <span class="flag">--port</span> 8080
+
+<span class="cm"># Per-request tokens via Authorization header with PAT fallback</span>
+<span class="cmd">curl</span> http://localhost:8080/tools/list \
+  <span class="flag">-H</span> <span class="str">"Authorization: Bearer ghp_per_request_token"</span><div class="lang-label">bash</div></pre>
+
+  <h3>GitHub Enterprise Server</h3>
+<pre>{
+  <span class="key">"mcpServers"</span>: {
+    <span class="key">"github-enterprise"</span>: {
+      <span class="key">"command"</span>: <span class="str">"docker"</span>,
+      <span class="key">"args"</span>: [<span class="str">"run"</span>, <span class="str">"-i"</span>, <span class="str">"--rm"</span>,
+        <span class="str">"-e"</span>, <span class="str">"GITHUB_PERSONAL_ACCESS_TOKEN"</span>,
+        <span class="str">"-e"</span>, <span class="str">"GITHUB_HOST=github.yourcompany.com"</span>,
+        <span class="str">"ghcr.io/github/github-mcp-server"</span>
+      ],
+      <span class="key">"env"</span>: { <span class="key">"GITHUB_PERSONAL_ACCESS_TOKEN"</span>: <span class="str">"ghp_..."</span> }
+    }
+  }
+}<div class="lang-label">json</div></pre>
+
+
+  <!-- ────────────────────────────────────────────── -->
+  <h2 id="resources">Resources</h2>
+
+  <div class="tool-grid" style="grid-template-columns:1fr 1fr;">
+    <div class="tool-card">
+      <h4>📖 Official Docs</h4>
+      <div class="tools" style="flex-direction:column;gap:6px;margin-top:6px;">
+        <a href="https://github.com/github/github-mcp-server" target="_blank" style="font-size:12px;">github/github-mcp-server (source)</a>
+        <a href="https://docs.github.com/en/copilot/how-tos/provide-context/use-mcp/set-up-the-github-mcp-server" target="_blank" style="font-size:12px;">GitHub MCP Setup Guide</a>
+        <a href="https://docs.github.com/en/copilot/how-tos/provide-context/use-mcp/configure-toolsets" target="_blank" style="font-size:12px;">Toolset Configuration Docs</a>
+        <a href="https://docs.claude.com" target="_blank" style="font-size:12px;">Claude MCP Docs</a>
+      </div>
+    </div>
+    <div class="tool-card">
+      <h4>🔗 Quick Links</h4>
+      <div class="tools" style="flex-direction:column;gap:6px;margin-top:6px;">
+        <a href="https://github.com/github/github-mcp-server/blob/main/docs/installation-guides/install-claude.md" target="_blank" style="font-size:12px;">Claude Installation Guide</a>
+        <a href="https://github.blog/changelog/2026-01-28-github-mcp-server-new-projects-tools-oauth-scope-filtering-and-new-features/" target="_blank" style="font-size:12px;">Jan 2026 Changelog</a>
+        <a href="https://github.com/github/github-mcp-server/releases" target="_blank" style="font-size:12px;">Release Notes</a>
+        <a href="https://ghcr.io/github/github-mcp-server" target="_blank" style="font-size:12px;">Docker Image (GHCR)</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout key" style="margin-top:28px;">
+    <span class="icon">🔑</span>
+    <div>
+      <strong>TL;DR for quick setup:</strong><br/>
+      1. Generate a GitHub PAT with <code>repo</code> + <code>read:org</code> scopes.<br/>
+      2. Add the remote MCP server to Claude Code: <code>claude mcp add-json github '{"type":"http","url":"https://api.githubcopilot.com/mcp","headers":{"Authorization":"Bearer YOUR_PAT"}}'</code><br/>
+      3. Restart Claude and try: <em>"List my open pull requests."</em>
+    </div>
+  </div>
+
+  <p style="margin-top:40px;font-size:12px;color:var(--muted);border-top:1px solid var(--border);padding-top:20px;">
+    Guide accurate as of April 2026. GitHub MCP server version ≥ Jan 2026 release. Source: github/github-mcp-server, GitHub Docs, Anthropic Docs.
+  </p>
+
+</main>
+</div>
+
+<script>
+// Highlight active nav item on scroll
+const sections = document.querySelectorAll('h2[id], h1[id]');
+const links = document.querySelectorAll('nav a');
+function onScroll(){
+  let current='';
+  sections.forEach(s=>{ if(window.scrollY>=s.offsetTop-80) current=s.id; });
+  links.forEach(l=>{ l.classList.toggle('active', l.getAttribute('href')==='#'+current); });
+}
+window.addEventListener('scroll',onScroll,{passive:true});
+// Smooth scroll
+links.forEach(l=>l.addEventListener('click',e=>{
+  const t=document.querySelector(l.getAttribute('href'));
+  if(t){e.preventDefault();t.scrollIntoView({behavior:'smooth',block:'start'});}
+}));
+</script>
+</body>
+</html>
