@@ -20,6 +20,7 @@ A multi-agent stock analysis system that fetches 10 years of daily price data fo
 - [Running the Pipeline](#running-the-pipeline)
 - [Configuration](#configuration)
 - [API & Alternatives](#api--alternatives)
+- [ClickHouse Integration](#clickhouse-integration)
 - [Do Nots](#do-nots)
 - [Current Results](#current-results)
 
@@ -443,6 +444,7 @@ pip install openpyxl python-pptx  # for report generation scripts
 ```
 yfinance
 pandas
+clickhouse-connect
 ```
 
 ### 4. Verify the `.claude/settings.local.json` network permission
@@ -563,6 +565,239 @@ Each `.md` file is the system prompt / instruction set for its corresponding sub
 | Tiingo | Yes | Yes | Clean REST, reliable |
 | EOD Historical Data | No | Yes | Global coverage |
 | Financial Modeling Prep | Yes (limited) | Yes | Fundamentals + prices |
+
+---
+
+## ClickHouse Integration
+
+This section describes the experimental ClickHouse layer added to the project for learning and experimentation. It replaces the JSON-scanning approach of the `ath-atl-finder` agent with a single SQL query against a columnar database, and lays the groundwork for more advanced time-series analytics.
+
+### Why ClickHouse?
+
+The `ath-atl-finder` agent currently works by reading 10 separate JSON files and iterating over ~2,500 closing prices per ticker in Python to find the max and min. This works fine at 10 tickers. But ClickHouse is a columnar OLAP database built specifically for aggregate queries over large time-series datasets — finding a max/min across millions of rows is exactly what it is optimized for.
+
+Beyond ATH/ATL, having all OHLCV bars in ClickHouse unlocks queries the current pipeline cannot do at all: rolling 52-week highs, moving averages, drawdown windows, cross-ticker correlation — all expressible as SQL without touching Python or JSON files.
+
+### Architecture: what changes
+
+The original pipeline reads and writes flat JSON files at every stage. The ClickHouse integration adds a parallel data path where raw OHLCV bars live in a database table instead. Stage 2 (ATH/ATL) is replaced by a SQL query; everything downstream (stages 3–5) remains unchanged because the output written to `02_ath_atl.json` is identical in schema.
+
+```
+Original path:
+  01_fetcher/*.json  →  [Python loop, ~25k iterations]  →  02_ath_atl.json
+
+ClickHouse path:
+  01_fetcher/*.json  →  load_to_clickhouse.py  →  stock_analysis.prices (CH table)
+                                                          │
+                                              ath_atl_clickhouse.py (1 SQL query)
+                                                          │
+                                                   02_ath_atl.json  (same schema)
+```
+
+Stages 3, 4, 5, and all output scripts are unaffected — they still read from `02_ath_atl.json` onward.
+
+### ClickHouse table schema
+
+```sql
+CREATE TABLE stock_analysis.prices (
+    ticker      LowCardinality(String),  -- low-cardinality: only ~10 distinct values
+    date        Date,
+    open        Float64,
+    high        Float64,
+    low         Float64,
+    close       Float64,
+    volume      UInt64
+) ENGINE = MergeTree()
+ORDER BY (ticker, date)
+```
+
+**Design notes:**
+
+- **`MergeTree` engine** is ClickHouse's standard table engine for time-series. It stores data sorted by the `ORDER BY` key on disk, making range scans by `(ticker, date)` extremely fast.
+- **`LowCardinality(String)`** for `ticker` tells ClickHouse that this column has very few distinct values (~10). It stores it as a dictionary-encoded column internally, which reduces memory and speeds up `GROUP BY ticker` queries significantly.
+- **`ORDER BY (ticker, date)`** sorts rows first by ticker, then by date within each ticker. This means all of AAPL's rows are physically co-located on disk, so a `WHERE ticker = 'AAPL'` scan reads a contiguous block — no scattered I/O.
+
+### New files
+
+#### `src/load_to_clickhouse.py`
+
+Reads all 10 ticker JSONs from `src/data/pipeline/01_fetcher/` via `manifest.json`, parses the nested yfinance chart API format, and bulk-inserts all rows into ClickHouse.
+
+**JSON parsing:** The yfinance chart API stores data as parallel arrays — a `timestamp[]` array of Unix timestamps and a `quote[0].close[]` array of prices at matching indices. The loader zips these arrays together, converts each Unix timestamp to a `datetime.date`, and skips any bar where `close` is `None` (these are market holiday gaps that yfinance includes as null entries).
+
+```python
+# Core parsing logic
+for ts, o, h, l, c, v in zip(timestamps, opens, highs, lows, closes, volumes):
+    if c is None:
+        continue  # skip null bars (market holiday gaps)
+    date = datetime.date.fromtimestamp(ts)
+    rows.append((ticker, date, float(o), float(h), float(l), float(c), int(v)))
+```
+
+**Idempotency:** The script runs `TRUNCATE TABLE` before inserting, so re-running it always produces a clean, consistent state. Safe to run multiple times.
+
+**Expected output:**
+
+```
+  [ok] AAPL    2513 rows
+  [ok] TSLA    1706 rows
+  [ok] MSFT    2515 rows
+  [ok] NVDA    2515 rows
+  [ok] AMZN    2515 rows
+  [ok] META    3272 rows
+  [ok] GOOGL   2515 rows
+  [ok] SPY     2516 rows
+  [ok] COIN    1030 rows
+  [ok] AMD     2515 rows
+
+Done. 24,612 total rows inserted into stock_analysis.prices
+```
+
+#### `src/ath_atl_clickhouse.py`
+
+Runs a single SQL query against `stock_analysis.prices` to find ATH and ATL (price + date) for all tickers simultaneously, then writes the result to `src/data/pipeline/02_ath_atl.json` in exactly the same schema that stage 3 (`time-delta-calculator`) expects.
+
+### The SQL query explained
+
+```sql
+SELECT
+    ticker,
+    max(close)           AS ath_price,
+    argMax(date, close)  AS ath_date,
+    min(close)           AS atl_price,
+    argMin(date, close)  AS atl_date
+FROM stock_analysis.prices
+GROUP BY ticker
+ORDER BY ticker
+```
+
+The naive `max(close)` / `min(close)` gives the prices but not the dates. ClickHouse's `argMax(X, Y)` aggregate function solves this: it returns the value of `X` at the row where `Y` is at its maximum. So `argMax(date, close)` returns the date of the highest closing price — exactly what the pipeline needs.
+
+| Function | What it returns |
+|---|---|
+| `max(close)` | The highest closing price across all rows for the ticker |
+| `argMax(date, close)` | The date on which that highest close occurred |
+| `min(close)` | The lowest closing price |
+| `argMin(date, close)` | The date on which that lowest close occurred |
+
+This single query replaces ~25,000 Python iterations across 10 JSON files (one pass per ticker, ~2,500 rows each). ClickHouse executes it as a columnar scan — reading only the `ticker`, `date`, and `close` columns from disk, skipping `open`, `high`, `low`, `volume` entirely.
+
+### Output schema
+
+The output written to `02_ath_atl.json` is identical to what the original `ath-atl-finder` agent produces:
+
+```json
+[
+  {
+    "ticker":    "AAPL",
+    "ath_price": 288.62,
+    "ath_date":  "2025-12-03",
+    "atl_price": 22.37,
+    "atl_date":  "2016-05-12"
+  },
+  ...
+]
+```
+
+Because the schema is unchanged, `time-delta-calculator` (stage 3), `stock-analyst` (stage 4), `aggregator` (stage 5), and all output scripts work without any modification.
+
+### Setup and running
+
+#### 1. Start ClickHouse locally via Docker
+
+```bash
+docker run -d \
+  --name clickhouse \
+  -p 8123:8123 \
+  -p 9000:9000 \
+  clickhouse/clickhouse-server
+```
+
+Port `8123` is the HTTP interface used by `clickhouse-connect`. Port `9000` is the native TCP interface (used by the `clickhouse-client` CLI).
+
+Verify it is running:
+
+```bash
+curl http://localhost:8123/ping
+# → Ok.
+```
+
+#### 2. Install the Python client
+
+```bash
+pip install clickhouse-connect
+# or: pip install -r requirements.txt  (already included)
+```
+
+`clickhouse-connect` is the official Python client maintained by ClickHouse, Inc. It uses the HTTP interface and supports both synchronous queries and bulk inserts.
+
+#### 3. Load all ticker data into ClickHouse
+
+```bash
+python3 src/load_to_clickhouse.py
+```
+
+This creates the `stock_analysis` database and `prices` table if they do not exist, then inserts all rows from the 10 cached JSON files. Re-running is safe — it truncates before inserting.
+
+#### 4. Run the ClickHouse-powered ATH/ATL finder
+
+```bash
+python3 src/ath_atl_clickhouse.py
+```
+
+This overwrites `src/data/pipeline/02_ath_atl.json` with results from the SQL query. From this point, the rest of the pipeline continues normally — run `time-delta-calculator`, `stock-analyst`, and `aggregator` as usual.
+
+#### 5. (Optional) Explore the data interactively
+
+Connect to ClickHouse with the CLI to run queries directly:
+
+```bash
+docker exec -it clickhouse clickhouse-client
+```
+
+```sql
+-- Row count per ticker
+SELECT ticker, count() AS bars
+FROM stock_analysis.prices
+GROUP BY ticker
+ORDER BY bars DESC;
+
+-- ATH and ATL for all tickers in one query
+SELECT
+    ticker,
+    max(close) AS ath,
+    argMax(date, close) AS ath_date,
+    min(close) AS atl,
+    argMin(date, close) AS atl_date,
+    round(max(close) / min(close), 1) AS gain_multiple
+FROM stock_analysis.prices
+GROUP BY ticker
+ORDER BY gain_multiple DESC;
+
+-- Best single-day close gains per ticker
+SELECT
+    ticker,
+    date,
+    close,
+    neighbor(close, -1) OVER (PARTITION BY ticker ORDER BY date) AS prev_close,
+    round((close - prev_close) / prev_close * 100, 2) AS pct_change
+FROM stock_analysis.prices
+ORDER BY pct_change DESC
+LIMIT 20;
+```
+
+### Dependency on cached data
+
+`load_to_clickhouse.py` reads from `src/data/pipeline/01_fetcher/*.json` — the same files written by the `stock-fetcher` agent. The fetcher must have run at least once before loading into ClickHouse. If you add a new ticker to the pipeline, re-run the fetcher for that ticker and then re-run `load_to_clickhouse.py` to sync it into ClickHouse.
+
+### `requirements.txt`
+
+`clickhouse-connect` has been added to `requirements.txt`. Install all dependencies with:
+
+```bash
+pip install -r requirements.txt
+pip install openpyxl python-pptx  # for report generation scripts
+```
 
 ---
 
